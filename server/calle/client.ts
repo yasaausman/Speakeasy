@@ -120,13 +120,17 @@ export class McpCalleTransport implements CalleTransport {
 
   async getCallRun(input: GetCallRunInput): Promise<GetCallRunResult> {
     const s = await this.call("get_call_run", input as Record<string, unknown>);
+    // CALL-E nests the payload under `result`; fall back to top-level fields
+    // (the fake transport puts them there directly).
+    const result = s.result && typeof s.result === "object" ? (s.result as Record<string, unknown>) : {};
+    const hasResult = Object.keys(result).length > 0;
     return {
       run_id: str(s.run_id),
       status: str(s.status),
       activity: s.activity,
-      summary: str(s.summary),
-      details: s.details,
-      transcript: str(s.transcript),
+      summary: str(result.summary) ?? str(result.post_summary) ?? str(s.summary) ?? str(s.message),
+      details: hasResult ? result : s.details,
+      transcript: str(result.transcript) ?? str(s.transcript),
       next_step: s.next_step,
       raw: s,
     };
