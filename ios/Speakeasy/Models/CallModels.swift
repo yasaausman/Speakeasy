@@ -3,17 +3,19 @@ import Foundation
 // MARK: - Supported user languages (mirrors server/language/languages.ts)
 // The phone call is always English; this is the language the USER uses.
 struct AppLanguage: Identifiable, Hashable {
-    let code: String    // "en" | "es" | "hi" | "ar"
-    let name: String    // English name
-    let endonym: String // name in its own script
+    let code: String      // "en" | "es" | "hi" | "ar"
+    let name: String      // English name
+    let endonym: String   // name in its own script
     let rtl: Bool
+    let sttLocale: String // SFSpeechRecognizer locale
+    let ttsLocale: String // AVSpeechSynthesizer voice
     var id: String { code }
 
     static let all: [AppLanguage] = [
-        AppLanguage(code: "en", name: "English", endonym: "English", rtl: false),
-        AppLanguage(code: "es", name: "Spanish", endonym: "Español", rtl: false),
-        AppLanguage(code: "hi", name: "Hindi", endonym: "हिन्दी", rtl: false),
-        AppLanguage(code: "ar", name: "Arabic", endonym: "العربية", rtl: true),
+        AppLanguage(code: "en", name: "English", endonym: "English", rtl: false, sttLocale: "en-US", ttsLocale: "en-US"),
+        AppLanguage(code: "es", name: "Spanish", endonym: "Español", rtl: false, sttLocale: "es-ES", ttsLocale: "es-ES"),
+        AppLanguage(code: "hi", name: "Hindi", endonym: "हिन्दी", rtl: false, sttLocale: "hi-IN", ttsLocale: "hi-IN"),
+        AppLanguage(code: "ar", name: "Arabic", endonym: "العربية", rtl: true, sttLocale: "ar-SA", ttsLocale: "ar-SA"),
     ]
 
     static let spanish = all[1]

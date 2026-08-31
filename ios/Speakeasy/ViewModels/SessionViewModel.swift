@@ -16,18 +16,46 @@ final class SessionViewModel: ObservableObject {
     @Published var language: AppLanguage = .spanish
     let languages = AppLanguage.all
 
+    /// Native on-device voice (STT in, TTS out).
+    let speech = SpeechManager()
+
     private let api: SpeakeasyAPI
     private var sessionId: String?
     private var pollTask: Task<Void, Never>?
+
+    var canAcceptInput: Bool { phase == .idle || phase == .collecting || phase == .failed }
 
     /// Defaults to the live Node backend. Pass MockSpeakeasyAPI() to run offline.
     init(api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
         self.api = api
     }
 
+    // MARK: Voice input (press-to-talk)
+
+    /// Begin capturing speech in the user's language. Requests permission first.
+    func startVoiceInput() {
+        guard canAcceptInput, !speech.isListening else { return }
+        speech.stopSpeaking()
+        Task {
+            guard await self.speech.requestPermissions() else {
+                self.errorMessage = self.speech.lastError
+                return
+            }
+            self.speech.startListening(localeId: self.language.sttLocale)
+        }
+    }
+
+    /// Stop capturing and submit whatever was transcribed.
+    func endVoiceInput() {
+        guard speech.isListening else { return }
+        let text = speech.stopListening()
+        draftText = text
+        submitGoal(text)
+    }
+
     // MARK: Intents
 
-    /// Submit a typed goal. (Voice input rejoins here after STT — Phase M3.)
+    /// Submit a goal (typed, or transcribed from voice). Both rejoin here.
     func submitGoal(_ text: String) {
         let goal = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !goal.isEmpty else { return }
@@ -37,6 +65,17 @@ final class SessionViewModel: ObservableObject {
             let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
+            // Read the goal back aloud in the user's language.
+            self.speech.speak(u.readbackUserLang, localeId: self.language.ttsLocale)
+        }
+    }
+
+    /// Replay the spoken result narration (used by the result card).
+    func speakResult() {
+        guard let r = result else { return }
+        speech.speak(r.outcomeUserLang ?? r.outcome, localeId: language.ttsLocale)
+        for number in r.confirmationNumbers {
+            speech.speakDigits(number, localeId: language.ttsLocale)
         }
     }
 
@@ -59,6 +98,7 @@ final class SessionViewModel: ObservableObject {
 
     func reset() {
         pollTask?.cancel()
+        speech.stopSpeaking()
         phase = .idle
         understanding = nil
         statusLine = nil
@@ -98,10 +138,12 @@ final class SessionViewModel: ObservableObject {
                     }
                     break
                 }
-                // TODO(Phase M1): match the backend's 5–10s cadence for real runs.
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
-            // TODO(Phase M3): speak result.outcomeUserLang via SpeechManager here.
+            // Narrate the outcome aloud in the user's language.
+            await MainActor.run {
+                if self.phase == .done { self.speakResult() }
+            }
         }
     }
 

@@ -55,13 +55,10 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 - **Multi-language** — English, Spanish, Hindi, Arabic. In-app language picker; **RTL layout** for Arabic (verified). Language flows through the backend translation layer.
 - **A3 · First real call** ☎️ — a real CALL-E call completed end-to-end (`COMPLETED`, real transcript, task confirmed). Fixed auth (reuse the `calle` CLI token) and result extraction (CALL-E nests `result.{summary,transcript}`) along the way.
 - **A4 · Live translation** — Gemini wired (`gemini-flash-latest`); verified in the app: English goal → real Spanish/Hindi/Arabic readback + narration, both directions. `.env` auto-loaded by the backend.
+- **B1 · Voice in** 🎙️ — press-and-hold mic → `SFSpeechRecognizer` (native, on-device STT) → transcript rejoins the pipeline. Permission flow verified in the simulator.
+- **B2 · Voice out** 🔊 — `AVSpeechSynthesizer` (native TTS) speaks the readback and the result in the user's language; confirmation numbers read digit-by-digit; "Play narration" replays. Verified end-to-end.
 
 ### ⬜ To do
-
-**Track B — make it talk (voice)**
-
-- **B1 · Voice in** — mic → `SFSpeechRecognizer` (native STT) → goal, rejoining the pipeline after transcription.
-- **B2 · Voice out** — `AVSpeechSynthesizer` (native TTS) speaks the readback and the result; confirmation numbers read digit-by-digit.
 
 **Later**
 

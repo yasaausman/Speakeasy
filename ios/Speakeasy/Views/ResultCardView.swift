@@ -4,6 +4,7 @@ import SwiftUI
 /// transcript (handy for the demo video).
 struct ResultCardView: View {
     let result: CallResult
+    var onReplay: () -> Void
     var onDone: () -> Void
 
     @State private var showTranscript = false
@@ -28,9 +29,7 @@ struct ResultCardView: View {
                     }
                 }
 
-                Button {
-                    // TODO(Phase M3): replay narration via SpeechManager.speak(...)
-                } label: {
+                Button(action: onReplay) {
                     Label("Play narration", systemImage: "play.circle.fill")
                 }
                 .buttonStyle(.bordered)

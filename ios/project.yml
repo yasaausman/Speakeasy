@@ -20,5 +20,8 @@ targets:
         SWIFT_VERSION: "5.0"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # Voice (Track B): microphone + speech recognition usage strings.
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Speakeasy uses the microphone so you can speak your request."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Speakeasy transcribes your speech to understand what you need."
         # NOTE(Phase M1): to allow http://localhost backend calls from the simulator,
         # add an NSAppTransportSecurity dict (NSAllowsLocalNetworking) via a real Info.plist.

@@ -16,7 +16,7 @@ struct ContentView: View {
                 case .calling, .polling, .narrating:
                     callingView
                 case .done:
-                    if let r = vm.result { ResultCardView(result: r, onDone: vm.reset) }
+                    if let r = vm.result { ResultCardView(result: r, onReplay: vm.speakResult, onDone: vm.reset) }
                 }
             }
             .padding()
@@ -51,19 +51,27 @@ struct ContentView: View {
     private var inputView: some View {
         VStack(spacing: 20) {
             Spacer()
-            // TODO(Phase M3): wire this to SpeechManager (SFSpeechRecognizer).
-            Button {
-                // Placeholder until voice input lands.
-            } label: {
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(.white)
-                    .frame(width: 120, height: 120)
-                    .background(Circle().fill(.blue))
-            }
-            Text("Hold to speak — or type your request below")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            // Press-and-hold to talk (native SFSpeechRecognizer).
+            Image(systemName: vm.speech.isListening ? "waveform" : "mic.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(.white)
+                .frame(width: 120, height: 120)
+                .background(Circle().fill(vm.speech.isListening ? .red : .blue))
+                .scaleEffect(vm.speech.isListening ? 1.08 : 1.0)
+                .animation(.easeInOut(duration: 0.25), value: vm.speech.isListening)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in vm.startVoiceInput() }
+                        .onEnded { _ in vm.endVoiceInput() }
+                )
+
+            Text(vm.speech.isListening
+                 ? (vm.speech.partialText.isEmpty ? "Listening…" : vm.speech.partialText)
+                 : "Hold to speak — or type your request below")
+                .font(vm.speech.isListening ? .body : .subheadline)
+                .foregroundStyle(vm.speech.isListening ? .primary : .secondary)
+                .multilineTextAlignment(.center)
+                .frame(minHeight: 44)
 
             HStack {
                 TextField("What do you need? (e.g. book a dentist appointment)", text: $vm.draftText, axis: .vertical)
