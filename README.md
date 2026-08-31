@@ -57,12 +57,10 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 - **A4 · Live translation** — Gemini wired (`gemini-flash-latest`); verified in the app: English goal → real Spanish/Hindi/Arabic readback + narration, both directions. `.env` auto-loaded by the backend.
 - **B1 · Voice in** 🎙️ — press-and-hold mic → `SFSpeechRecognizer` (native, on-device STT) → transcript rejoins the pipeline. Permission flow verified in the simulator.
 - **B2 · Voice out** 🔊 — `AVSpeechSynthesizer` (native TTS) speaks the readback and the result in the user's language; confirmation numbers read digit-by-digit; "Play narration" replays. Verified end-to-end.
+- **C1 · Multi-call comparison** 🏆 — "Compare places" fans out N calls in parallel, Gemini ranks the outcomes for any goal ("soonest"/"cheapest"/…), and the app shows a ranked list + a highlighted best option, narrated aloud in the user's language.
 
 ### ⬜ To do
 
-**Later**
-
-- **C1 · Multi-call comparison** — fan out N calls, rank, narrate a spoken comparison.
 - **C2 · Polish + submit** — error/edge handling, backup demo video, submission PR to `CALLE-AI/awesome-phone-call-agents` (`apps/`).
 
 ## Layout
