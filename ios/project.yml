@@ -1,0 +1,24 @@
+name: Speakeasy
+options:
+  bundleIdPrefix: com.speakeasy
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+targets:
+  Speakeasy:
+    type: application
+    platform: iOS
+    sources:
+      - path: Speakeasy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.speakeasy.app
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # NOTE(Phase M1): to allow http://localhost backend calls from the simulator,
+        # add an NSAppTransportSecurity dict (NSAllowsLocalNetworking) via a real Info.plist.

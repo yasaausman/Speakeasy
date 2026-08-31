@@ -4,10 +4,10 @@ Voice-first SwiftUI client for Speakeasy. The app is the user's side (tap-to-tal
 confirm gate, live status, result card). All CALL-E logic stays on the Node
 backend — the app only talks to it over HTTP (see `Networking/SpeakeasyAPI.swift`).
 
-> **Status:** stub scaffold, written before Xcode was installed. These are real
-> Swift sources but have not been compiled yet. Once Xcode is installed we create
-> the project, add these files, and it runs in the simulator against the built-in
-> **mock** (no backend, no CALL-E, no calls).
+> **Status:** ✅ builds and runs in the iOS Simulator (verified on iPhone 17 Pro,
+> iOS 26.5). Runs against the built-in **mock** — no backend, no CALL-E, no calls.
+> The full flow works: type a goal → confirm gate (Spanish readback) → mock call →
+> translated result card.
 
 ## Files
 
@@ -22,24 +22,32 @@ Speakeasy/
   Speech/SpeechManager.swift      STT/TTS stub (Phase M3)
 ```
 
-## Creating the Xcode project (once Xcode is installed)
+## Build & run
 
-1. First point the toolchain at Xcode (needs your password):
-   ```bash
-   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-   sudo xcodebuild -license accept
-   ```
-2. Xcode → File → New → Project → **iOS App**.
-   - Product Name: `Speakeasy`
-   - Interface: **SwiftUI**, Language: **Swift**
-   - Save it inside `ios/` (or let Claude generate the project — see below).
-3. Delete the default `ContentView.swift`/`App.swift` Xcode made, then drag the
-   files under `ios/Speakeasy/` into the project (check "Create groups").
-4. Pick an iPhone simulator and Run (⌘R). It launches on the **mock** API, so you
-   can walk the full flow — type a goal → confirm → watch the fake call → result.
+The Xcode project is **generated from `project.yml`** with [XcodeGen] — it is not
+committed (see root `.gitignore`). Regenerate it any time you add/rename a source
+file:
 
-> Tell Claude when Xcode is ready and it can generate the `.xcodeproj` and run/
-> screenshot the app in the simulator for you.
+```bash
+cd ios
+xcodegen generate          # writes Speakeasy.xcodeproj
+open Speakeasy.xcodeproj    # then ⌘R on an iPhone simulator
+```
+
+Or build & launch from the command line:
+
+```bash
+cd ios
+xcodegen generate
+xcodebuild -project Speakeasy.xcodeproj -scheme Speakeasy \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -derivedDataPath build build
+xcrun simctl boot "iPhone 17 Pro"; open -a Simulator
+xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/Speakeasy.app
+xcrun simctl launch booted com.speakeasy.app
+```
+
+[XcodeGen]: https://github.com/yonaskolb/XcodeGen  (`brew install xcodegen`)
 
 ## Switching from mock to the real backend (Phase M1)
 
