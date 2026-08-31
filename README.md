@@ -59,7 +59,7 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 **Track A — finish real calls**
 
 - **A3 · First real call** — finish `calle auth login`, then one deliberate real smoke call (`npm run smoke:real`, or via the app).
-- **A4 · Translation live** — the translation layer is built (`server/language/translate.ts`) and wired; set `OPENAI_API_KEY` to switch it from passthrough to real ES/HI/AR ⇄ EN.
+- **A4 · Translation live** — the translation layer is built (`server/language/translate.ts`, Gemini/OpenAI/passthrough) and wired; set `GEMINI_API_KEY` (preferred) to switch it from passthrough to real ES/HI/AR ⇄ EN.
 
 **Track B — make it talk (voice)**
 
@@ -113,7 +113,7 @@ scripts/
    Type a goal → confirm → watch the (fake) call complete → result card. Pick a language
    from the globe menu; Arabic switches the UI to RTL.
 
-**Real translation:** set `OPENAI_API_KEY` in `.env` to translate ES/HI/AR ⇄ EN (otherwise passthrough).
+**Real translation:** set `GEMINI_API_KEY` in `.env` (or `OPENAI_API_KEY`) to translate ES/HI/AR ⇄ EN (otherwise passthrough). Provider is auto-selected Gemini > OpenAI > passthrough; the backend logs which on startup.
 
 **Real call** (spends one of your 20 free calls) — first authenticate the `calle` CLI
 (see [call-e-integrations](https://github.com/CALLE-AI/call-e-integrations)):

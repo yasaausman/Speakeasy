@@ -72,8 +72,60 @@ export class OpenAITranslator implements Translator {
   }
 }
 
-/** Pick a translator from the environment. */
+export class GeminiTranslator implements Translator {
+  readonly name: string;
+  constructor(
+    private readonly apiKey: string,
+    private readonly model = process.env.GEMINI_MODEL || "gemini-2.0-flash",
+  ) {
+    this.name = `gemini(${this.model})`;
+  }
+
+  async toEnglish(text: string, from: LangCode): Promise<string> {
+    if (from === "en" || !text.trim()) return text;
+    return this.translate(text, LANGUAGES[from].name, "English");
+  }
+
+  async fromEnglish(text: string, to: LangCode): Promise<string> {
+    if (to === "en" || !text.trim()) return text;
+    return this.translate(text, "English", LANGUAGES[to].name);
+  }
+
+  private async translate(text: string, fromName: string, toName: string): Promise<string> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
+    const res = await fetch(url, {
+      method: "POST",
+      // Key goes in a header, never the URL (keeps it out of logs).
+      headers: { "content-type": "application/json", "x-goog-api-key": this.apiKey },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [
+            {
+              text:
+                `You are a translation engine. Translate the user's message from ${fromName} to ${toName}. ` +
+                "Output ONLY the translation — no quotes, no notes, no preamble. Preserve numbers, names, and dates exactly.",
+            },
+          ],
+        },
+        contents: [{ parts: [{ text }] }],
+        generationConfig: { temperature: 0 },
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Gemini translate failed: HTTP ${res.status}`);
+    }
+    const json = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || text;
+  }
+}
+
+/** Pick a translator from the environment: Gemini > OpenAI > passthrough. */
 export function createTranslator(): Translator {
-  const key = process.env.OPENAI_API_KEY?.trim();
-  return key ? new OpenAITranslator(key) : new MockTranslator();
+  const gemini = process.env.GEMINI_API_KEY?.trim();
+  if (gemini) return new GeminiTranslator(gemini);
+  const openai = process.env.OPENAI_API_KEY?.trim();
+  if (openai) return new OpenAITranslator(openai);
+  return new MockTranslator();
 }

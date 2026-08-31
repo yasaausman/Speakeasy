@@ -22,6 +22,7 @@ const DISCLOSURE =
 
 export class Orchestrator {
   readonly store = new SessionStore();
+  readonly translatorName: string;
   private readonly calle: CalleClient;
   private readonly translator: Translator;
   private readonly defaultTargetNumber: string;
@@ -32,6 +33,7 @@ export class Orchestrator {
       opts.calle ??
       createCalleClient({ poll: { firstDelayMs: 1500, intervalMs: 1500, maxWaitMs: 30_000 } });
     this.translator = opts.translator ?? createTranslator();
+    this.translatorName = this.translator.name;
     this.defaultTargetNumber = opts.defaultTargetNumber || process.env.DEMO_TARGET_NUMBER || "+15555550123";
   }
 
