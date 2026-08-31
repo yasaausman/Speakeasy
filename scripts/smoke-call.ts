@@ -13,22 +13,21 @@ import type { CallBrief } from "../server/calle/types.js";
 
 const REAL = process.argv.includes("--real") || process.env.CALLE_MODE === "real";
 
-// Hardcoded English brief for Phase 0. Replace targetNumber before a real run.
+// Hardcoded English brief for Phase 0. Deliberately a HARMLESS self-test so the
+// first real call to your own phone is clean and predictable — no fake booking,
+// no personal data. Set SMOKE_TARGET_NUMBER to your own phone before a real run.
 const brief: CallBrief = {
-  objective: "Book a dentist appointment for my son next week",
+  objective:
+    "Make a short test call. Greet the person, confirm they can hear you clearly, thank them, then end the call.",
   targetNumber: process.env.SMOKE_TARGET_NUMBER || "+15555550123",
   targetRegion: "US",
   language: "English",
-  constraints: ["mornings only", "next week"],
-  facts: {
-    "patient name": "Alex",
-    insurance: "Medicaid",
-    "callback number": process.env.SMOKE_CALLBACK_NUMBER || "+15555550100",
-  },
-  successCondition: "appointment booked and confirmation number captured; confirm they accept Medicaid",
-  fallback: "if no morning slots, take the earliest afternoon; if closed, report their hours",
+  constraints: ["keep it under about 30 seconds", "do not ask for or collect any personal information"],
+  facts: {},
+  successCondition: "the person confirmed they can hear the call clearly",
+  fallback: "if no one answers or it goes to voicemail, just end the call without leaving a message",
   agentDisclosure:
-    "This is an AI assistant calling on behalf of a patient. I'm not a human; I'm placing this call for them.",
+    "This is an automated test call from an AI assistant — I'm not a human. I'm just checking that this call connects.",
 };
 
 async function main() {
