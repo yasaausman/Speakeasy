@@ -13,3 +13,6 @@ ios/build/
 ios/DerivedData/
 *.xcuserstate
 .DS_Store
+
+# Impeccable design skill scratch (screenshots, config)
+.impeccable/
