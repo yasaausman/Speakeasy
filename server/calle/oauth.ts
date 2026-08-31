@@ -10,6 +10,7 @@
  */
 import fs from "node:fs";
 import http from "node:http";
+import os from "node:os";
 import path from "node:path";
 import { URL } from "node:url";
 
@@ -164,12 +165,86 @@ function waitForLocalCallback(redirectUri: string, authorizationUrl: URL): Promi
 }
 
 /**
- * Connect an MCP client to CALL-E over Streamable HTTP + OAuth.
- * Reuses cached tokens; only triggers the browser flow when needed.
+ * Reuse the `calle` CLI's cached bearer token. The CLI (calle auth login) is the
+ * blessed way to authenticate; its token is tied to the user's account + call
+ * quota. We prefer it so we don't run a second, separate OAuth flow (which can
+ * connect but is not authorized to place calls). Cache: ~/.calle-mcp/cli/<hash>/token.json.
+ */
+function findCliToken(serverUrl: string): string | null {
+  const base = path.join(os.homedir(), ".calle-mcp", "cli");
+  let dirs: string[];
+  try {
+    dirs = fs.readdirSync(base);
+  } catch {
+    return null;
+  }
+  const now = Date.now();
+  for (const dir of dirs) {
+    try {
+      const raw = fs.readFileSync(path.join(base, dir, "token.json"), "utf8");
+      const j = JSON.parse(raw) as {
+        server_url?: string;
+        expires_at?: string;
+        token?: { access_token?: string };
+      };
+      if (j.server_url && serverUrl && j.server_url !== serverUrl) continue;
+      if (j.expires_at && Date.parse(j.expires_at) <= now) continue;
+      const accessToken = j.token?.access_token;
+      if (typeof accessToken === "string" && accessToken) return accessToken;
+    } catch {
+      // Skip unreadable/other entries.
+    }
+  }
+  return null;
+}
+
+/** An OAuth provider that just hands back a pre-issued bearer token — no flow. */
+class StaticTokenOAuthProvider implements OAuthClientProvider {
+  constructor(private readonly accessToken: string) {}
+  get redirectUrl(): string {
+    return "";
+  }
+  get clientMetadata(): OAuthClientMetadata {
+    return { redirect_uris: [] };
+  }
+  clientInformation(): OAuthClientInformationMixed | undefined {
+    return undefined;
+  }
+  saveClientInformation(): void {}
+  tokens(): OAuthTokens {
+    return { access_token: this.accessToken, token_type: "Bearer" };
+  }
+  saveTokens(): void {}
+  redirectToAuthorization(): void {
+    throw new Error("CALL-E rejected the calle CLI token. Run `calle auth login` again.");
+  }
+  saveCodeVerifier(): void {}
+  codeVerifier(): string {
+    throw new Error("No code verifier for a static token.");
+  }
+  saveDiscoveryState(): void {}
+  discoveryState(): OAuthDiscoveryState | undefined {
+    return undefined;
+  }
+}
+
+/**
+ * Connect an MCP client to CALL-E over Streamable HTTP.
+ * Prefers the `calle` CLI's cached token; falls back to a browser OAuth flow.
  */
 export async function connectCalle(
   config: OAuthConfig,
 ): Promise<{ client: Client; transport: StreamableHTTPClientTransport }> {
+  const cliToken = findCliToken(config.serverUrl);
+  if (cliToken) {
+    const provider = new StaticTokenOAuthProvider(cliToken);
+    const client = new Client({ name: "speakeasy", version: "0.0.0" }, { capabilities: {} });
+    const transport = new StreamableHTTPClientTransport(new URL(config.serverUrl), { authProvider: provider });
+    await client.connect(transport);
+    return { client, transport };
+  }
+
+  // No CLI token — fall back to a self-contained browser OAuth flow.
   let authorizationUrl: URL | null = null;
   const clientMetadata: OAuthClientMetadata = {
     client_name: "Speakeasy CALL-E client",
