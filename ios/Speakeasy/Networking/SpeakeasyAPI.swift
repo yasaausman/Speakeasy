@@ -9,7 +9,7 @@ import Foundation
 ///   - LiveSpeakeasyAPI: real HTTP calls to the Node backend (Phase M1+).
 protocol SpeakeasyAPI {
     func createSession(lang: String) async throws -> String
-    func submitGoal(sessionId: String, text: String, lang: String) async throws -> GoalUnderstanding
+    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?) async throws -> GoalUnderstanding
     func confirm(sessionId: String) async throws
     func fetchSession(sessionId: String) async throws -> SessionState
 }
@@ -25,7 +25,7 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
         return "mock-session-1"
     }
 
-    func submitGoal(sessionId: String, text: String, lang: String) async throws -> GoalUnderstanding {
+    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?) async throws -> GoalUnderstanding {
         try await Task.sleep(nanoseconds: 500_000_000)
         let u = GoalUnderstanding(
             understoodGoalEnglish: "Test call: greet the person and confirm they can hear the call clearly.",
@@ -67,9 +67,12 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
         SessionState(
             sessionId: "mock-session-1",
             phase: phase,
+            mode: "single",
             statusLine: status,
             understanding: understanding,
             result: result,
+            ranked: nil,
+            winnerReason: nil,
             errorMessage: nil
         )
     }
@@ -98,9 +101,9 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
         return r.sessionId
     }
 
-    func submitGoal(sessionId: String, text: String, lang: String) async throws -> GoalUnderstanding {
-        struct Body: Codable { let text: String; let lang: String }
-        return try await post("/api/sessions/\(sessionId)/goal", body: Body(text: text, lang: lang))
+    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?) async throws -> GoalUnderstanding {
+        struct Body: Codable { let text: String; let lang: String; let numbers: [String]? }
+        return try await post("/api/sessions/\(sessionId)/goal", body: Body(text: text, lang: lang, numbers: numbers))
     }
 
     func confirm(sessionId: String) async throws {

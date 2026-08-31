@@ -57,12 +57,22 @@ struct CallResult: Codable, Equatable {
     let transcript: String              // English, for the collapsible debug panel
 }
 
+// MARK: - One place's result in a multi-call comparison (C1)
+struct RankedResult: Codable, Equatable, Identifiable {
+    let number: String
+    let result: CallResult
+    var id: String { number }
+}
+
 // MARK: - The polled session state from the backend
 struct SessionState: Codable, Equatable {
     let sessionId: String
     let phase: SessionPhase
-    let statusLine: String?             // "Calling…", "On hold…", "Speaking with reception…"
+    let mode: String?                   // "single" | "multi"
+    let statusLine: String?             // "Calling…", "On hold…", "Comparing the results…"
     let understanding: GoalUnderstanding?
-    let result: CallResult?
+    let result: CallResult?             // single mode
+    let ranked: [RankedResult]?         // multi mode, best-first
+    let winnerReason: String?           // multi mode, in the user's language
     let errorMessage: String?
 }

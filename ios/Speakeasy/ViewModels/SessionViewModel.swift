@@ -9,8 +9,14 @@ final class SessionViewModel: ObservableObject {
     @Published var understanding: GoalUnderstanding?
     @Published var statusLine: String?
     @Published var result: CallResult?
+    @Published var ranked: [RankedResult]?      // multi-call comparison (C1)
+    @Published var winnerReason: String?
     @Published var errorMessage: String?
     @Published var draftText: String = ""
+
+    /// Multi-call comparison mode. Sends a preset set of demo numbers.
+    @Published var compareMode: Bool = false
+    let compareNumbers = ["+13120001111", "+13120002222", "+13120003333"]
 
     /// User-selected language (English/Spanish/Hindi/Arabic). The call stays English.
     @Published var language: AppLanguage = .spanish
@@ -59,10 +65,11 @@ final class SessionViewModel: ObservableObject {
     func submitGoal(_ text: String) {
         let goal = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !goal.isEmpty else { return }
+        let numbers = compareMode ? compareNumbers : nil
         run {
             self.phase = .collecting
             let sid = try await self.ensureSession()
-            let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code)
+            let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code, numbers: numbers)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
             // Read the goal back aloud in the user's language.
@@ -70,8 +77,12 @@ final class SessionViewModel: ObservableObject {
         }
     }
 
-    /// Replay the spoken result narration (used by the result card).
+    /// Replay the spoken narration (single result, or the multi-call winner).
     func speakResult() {
+        if let reason = winnerReason {
+            speech.speak(reason, localeId: language.ttsLocale)
+            return
+        }
         guard let r = result else { return }
         speech.speak(r.outcomeUserLang ?? r.outcome, localeId: language.ttsLocale)
         for number in r.confirmationNumbers {
@@ -103,6 +114,8 @@ final class SessionViewModel: ObservableObject {
         understanding = nil
         statusLine = nil
         result = nil
+        ranked = nil
+        winnerReason = nil
         errorMessage = nil
         draftText = ""
         sessionId = nil
@@ -128,6 +141,8 @@ final class SessionViewModel: ObservableObject {
                         self.phase = s.phase
                         self.statusLine = s.statusLine
                         if let r = s.result { self.result = r }
+                        if let rk = s.ranked { self.ranked = rk }
+                        if let w = s.winnerReason { self.winnerReason = w }
                         if let e = s.errorMessage { self.errorMessage = e }
                     }
                     if s.phase == .done || s.phase == .failed { break }

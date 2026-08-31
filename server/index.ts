@@ -38,17 +38,14 @@ app.post("/api/sessions", async (req) => {
 
 app.post("/api/sessions/:id/goal", async (req, reply) => {
   const { id } = req.params as { id: string };
-  const body = (req.body ?? {}) as { text?: string; lang?: string; number?: string };
+  const body = (req.body ?? {}) as { text?: string; lang?: string; numbers?: string[]; number?: string };
   if (!body.text?.trim()) {
     return reply.code(400).send({ error: "text is required" });
   }
+  // Accept `numbers` (multi-call) or a single `number`.
+  const numbers = Array.isArray(body.numbers) ? body.numbers : body.number ? [body.number] : undefined;
   try {
-    const understanding = await orchestrator.submitGoal(
-      id,
-      body.text,
-      coerceLang(body.lang),
-      body.number,
-    );
+    const understanding = await orchestrator.submitGoal(id, body.text, coerceLang(body.lang), numbers);
     return understanding;
   } catch (err) {
     return reply.code(404).send({ error: err instanceof Error ? err.message : "unknown session" });

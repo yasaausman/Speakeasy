@@ -16,7 +16,12 @@ struct ContentView: View {
                 case .calling, .polling, .narrating:
                     callingView
                 case .done:
-                    if let r = vm.result { ResultCardView(result: r, onReplay: vm.speakResult, onDone: vm.reset) }
+                    if let ranked = vm.ranked {
+                        RankedResultsView(ranked: ranked, winnerReason: vm.winnerReason,
+                                          onReplay: vm.speakResult, onDone: vm.reset)
+                    } else if let r = vm.result {
+                        ResultCardView(result: r, onReplay: vm.speakResult, onDone: vm.reset)
+                    }
                 }
             }
             .padding()
@@ -80,6 +85,12 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(vm.draftText.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+
+            Toggle(isOn: $vm.compareMode) {
+                Label("Compare 3 places, pick the best", systemImage: "list.number")
+                    .font(.subheadline)
+            }
+            .toggleStyle(.switch)
 
             if let err = vm.errorMessage {
                 Text(err).font(.footnote).foregroundStyle(.red)

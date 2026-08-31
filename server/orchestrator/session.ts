@@ -24,16 +24,29 @@ export interface NarratedResult extends CallResult {
   outcomeUserLang: string | null;
 }
 
+/** One place's result in a multi-call comparison (C1). */
+export interface RankedResult {
+  number: string;
+  result: NarratedResult;
+}
+
+export type SessionMode = "single" | "multi";
+
 export interface Session {
   id: string;
   phase: SessionPhase;
+  mode: SessionMode;
   userLang: LangCode;
   originalText?: string; // the user's goal in their own language
-  brief?: CallBrief; // the English brief handed to CALL-E
+  englishGoal?: string; // translated goal
+  brief?: CallBrief; // the English brief handed to CALL-E (single mode)
+  numbers?: string[]; // destinations (multi mode)
   understanding?: GoalUnderstanding;
   runId?: string;
   statusLine?: string | null;
-  result?: NarratedResult;
+  result?: NarratedResult; // single mode
+  ranked?: RankedResult[]; // multi mode, best-first
+  winnerReason?: string | null; // multi mode, in the user's language
   errorMessage?: string;
   updatedAt: number;
 }
@@ -42,9 +55,12 @@ export interface Session {
 export interface SessionStateDTO {
   sessionId: string;
   phase: SessionPhase;
+  mode: SessionMode;
   statusLine: string | null;
   understanding: GoalUnderstanding | null;
   result: NarratedResult | null;
+  ranked: RankedResult[] | null;
+  winnerReason: string | null;
   errorMessage: string | null;
 }
 
@@ -52,9 +68,12 @@ export function toDTO(s: Session): SessionStateDTO {
   return {
     sessionId: s.id,
     phase: s.phase,
+    mode: s.mode,
     statusLine: s.statusLine ?? null,
     understanding: s.understanding ?? null,
     result: s.result ?? null,
+    ranked: s.ranked ?? null,
+    winnerReason: s.winnerReason ?? null,
     errorMessage: s.errorMessage ?? null,
   };
 }
@@ -64,7 +83,7 @@ export class SessionStore {
 
   create(userLang: LangCode): Session {
     const id = `sess_${Math.random().toString(36).slice(2, 10)}`;
-    const session: Session = { id, phase: "collecting", userLang, updatedAt: Date.now() };
+    const session: Session = { id, phase: "collecting", mode: "single", userLang, updatedAt: Date.now() };
     this.sessions.set(id, session);
     return session;
   }

@@ -152,41 +152,63 @@ function redactArgs(_name: string, args: Record<string, unknown>): Record<string
 
 // ── Fake transport (dry-run: no network, no auth, no real call) ──────────────
 // Mirrors examples/shared/fake-mcp-broker-server.mjs behaviour closely enough
-// to exercise the full plan → run → poll → terminal workflow.
+// to exercise the full plan → run → poll → terminal workflow. Results VARY by
+// destination number (via a hash) so multi-call fan-out (C1) has real differences
+// to rank. Uses unique plan/run ids so a shared instance is safe for concurrency.
+type FakeScenario = { day: string; time: string; provider: string; conf: string; soonestRank: number };
+
+const FAKE_SCENARIOS: FakeScenario[] = [
+  { day: "Monday", time: "8:15am", provider: "City Dental", conf: "3120", soonestRank: 1 },
+  { day: "Tuesday", time: "9:40am", provider: "Dr. Lee", conf: "4471", soonestRank: 2 },
+  { day: "Wednesday", time: "11:00am", provider: "Bright Smiles", conf: "5562", soonestRank: 3 },
+  { day: "Thursday", time: "2:00pm", provider: "Family Dentistry", conf: "7788", soonestRank: 4 },
+  { day: "next Monday", time: "10:30am", provider: "Sunset Dental", conf: "9013", soonestRank: 5 },
+];
+
+function scenarioFor(number: string): FakeScenario {
+  let h = 0;
+  for (const ch of number) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return FAKE_SCENARIOS[h % FAKE_SCENARIOS.length];
+}
+
 export class FakeCalleTransport implements CalleTransport {
-  private pollCounts = new Map<string, number>();
+  private plans = new Map<string, string>(); // plan_id -> first to_phone
+  private runs = new Map<string, { number: string; count: number }>();
+  private seq = 0;
   constructor(private readonly log: Logger = defaultLogger) {}
 
   async planCall(input: PlanCallInput): Promise<PlanCallResult> {
+    const planId = `fake-plan-${++this.seq}`;
+    this.plans.set(planId, input.to_phones?.[0] ?? "unknown");
     this.log("fake:plan_call", { goal: input.goal ?? null, to_phones: input.to_phones ?? null });
-    return {
-      plan_id: "fake-plan-1",
-      confirm_token: "fake-confirm-token",
-      ready_to_run: true,
-      raw: { plan_id: "fake-plan-1", ready_to_run: true },
-    };
+    return { plan_id: planId, confirm_token: "fake-confirm-token", ready_to_run: true, raw: { plan_id: planId, ready_to_run: true } };
   }
 
   async runCall(input: RunCallInput): Promise<RunCallResult> {
+    const number = this.plans.get(input.plan_id) ?? "unknown";
+    const runId = `fake-run-${++this.seq}`;
+    this.runs.set(runId, { number, count: 0 });
     this.log("fake:run_call", { plan_id: input.plan_id });
-    return { run_id: "fake-run-1", status: "QUEUED", raw: { run_id: "fake-run-1", status: "QUEUED" } };
+    return { run_id: runId, status: "QUEUED", raw: { run_id: runId, status: "QUEUED" } };
   }
 
   async getCallRun(input: GetCallRunInput): Promise<GetCallRunResult> {
-    const count = (this.pollCounts.get(input.run_id) ?? 0) + 1;
-    this.pollCounts.set(input.run_id, count);
-    const done = count >= 2;
+    const st = this.runs.get(input.run_id) ?? { number: "unknown", count: 0 };
+    st.count += 1;
+    this.runs.set(input.run_id, st);
+    const done = st.count >= 2;
     const status = done ? "COMPLETED" : "IN_PROGRESS";
+    const s = scenarioFor(st.number);
     this.log("fake:get_call_run", { run_id: input.run_id, status });
     return {
       run_id: input.run_id,
       status,
       summary: done
-        ? "Booked a dentist appointment for Tuesday at 9:40am with Dr. Lee. They accept Medicaid. Confirmation number 4471."
+        ? `Appointment available ${s.day} at ${s.time} with ${s.provider}. They accept Medicaid. Confirmation number ${s.conf}.`
         : "Dialing and navigating the phone menu…",
-      transcript: done ? FAKE_TRANSCRIPT : "",
+      transcript: done ? fakeTranscript(s) : "",
       details: done
-        ? { appointment: "Tue 9:40am", provider: "Dr. Lee", accepts_insurance: true, confirmation: "4471" }
+        ? { appointment: `${s.day} ${s.time}`, provider: s.provider, accepts_insurance: true, confirmation: s.conf, soonest_rank: s.soonestRank }
         : {},
       next_step: done ? null : { action: "poll" },
       raw: { run_id: input.run_id, status },
@@ -198,14 +220,16 @@ export class FakeCalleTransport implements CalleTransport {
   }
 }
 
-const FAKE_TRANSCRIPT = [
-  "AGENT: Hi, I'm an AI assistant calling on behalf of a patient to book an appointment.",
-  "REP: Sure — what insurance do you have?",
-  "AGENT: The patient has Medicaid.",
-  "REP: Great, we accept that. We have Tuesday at 9:40am with Dr. Lee.",
-  "AGENT: That works. Please book it.",
-  "REP: Done. Confirmation number is 4471.",
-].join("\n");
+function fakeTranscript(s: FakeScenario): string {
+  return [
+    "AGENT: Hi, I'm an AI assistant calling on behalf of a patient to book an appointment.",
+    "REP: Sure — what insurance do you have?",
+    "AGENT: The patient has Medicaid.",
+    `REP: Great, we accept that. We have ${s.day} at ${s.time} with ${s.provider}.`,
+    "AGENT: That works. Please book it.",
+    `REP: Done. Confirmation number is ${s.conf}.`,
+  ].join("\n");
+}
 
 // ── High-level client ────────────────────────────────────────────────────────
 export type PollOptions = {
