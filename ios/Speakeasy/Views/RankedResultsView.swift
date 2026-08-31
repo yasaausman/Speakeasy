@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Multi-call comparison result (C1): a highlighted winner rationale plus the
-/// ranked list of every place we called, best first.
+/// Multi-call comparison (C1), warm-human world: a honey-lit winner card, then
+/// the ranked list of every place we called, best first.
 struct RankedResultsView: View {
     let ranked: [RankedResult]
     let winnerReason: String?
@@ -10,46 +10,59 @@ struct RankedResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if let reason = winnerReason, !reason.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Label("Best option", systemImage: "trophy.fill")
-                            .font(.headline).foregroundStyle(.orange)
-                        Text(reason).font(.body)
+                            .font(.headline)
+                            .foregroundStyle(Theme.honey)
+                        Text(reason)
+                            .font(.title3.weight(.medium))
+                            .foregroundStyle(Theme.ink)
                         Button(action: onReplay) {
-                            Label("Play", systemImage: "play.circle.fill")
+                            Label("Play", systemImage: "speaker.wave.2.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.honey)
+                                .padding(.vertical, 9).padding(.horizontal, 15)
+                                .background(Capsule().fill(Theme.honey.opacity(0.15)))
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.plain)
+                        .padding(.top, 2)
                     }
-                    .padding()
+                    .padding(Theme.Space.l)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(.orange.opacity(0.10)))
+                    .softCard(Theme.honey.opacity(0.12), stroke: Theme.honey.opacity(0.35))
                 }
 
                 ForEach(Array(ranked.enumerated()), id: \.element.id) { index, item in
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: Theme.Space.s) {
                         Text("\(index + 1)")
-                            .font(.headline.monospacedDigit())
-                            .frame(width: 28, height: 28)
-                            .background(Circle().fill(index == 0 ? Color.orange : Color.secondary.opacity(0.25)))
-                            .foregroundStyle(index == 0 ? .white : .primary)
+                            .font(.headline.weight(.bold).monospacedDigit())
+                            .foregroundStyle(index == 0 ? .white : Theme.inkSecondary)
+                            .frame(width: 34, height: 34)
+                            .background(Circle().fill(index == 0 ? Theme.honey : Theme.surfaceSunk))
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.number).font(.subheadline.weight(.semibold))
+                            Text(item.number)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.ink)
                             Text(item.result.outcomeUserLang ?? item.result.outcome)
-                                .font(.footnote).foregroundStyle(.secondary)
+                                .font(.footnote)
+                                .foregroundStyle(Theme.inkSecondary)
                         }
                         Spacer(minLength: 0)
                     }
-                    .padding()
+                    .padding(Theme.Space.m)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+                    .softCard(Theme.surface)
                 }
 
                 Button("New request", action: onDone)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryPill())
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 4)
+                    .padding(.top, Theme.Space.xs)
             }
+            .padding(.horizontal, Theme.Space.l)
+            .padding(.vertical, Theme.Space.m)
         }
     }
 }
