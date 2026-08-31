@@ -1,24 +1,25 @@
 import SwiftUI
 
 /*
- DIRECTION CONTRACT — Speakeasy visual world (seed: warm-human, user-pinned)
- THESIS: A caring companion that makes the scary English phone call for you. It
-   refuses the cold utility-app look for something warm, human, and reassuring.
- OWN-WORLD: warm cream / charcoal grounds, SF Rounded throughout, ONE coral tint
-   with a honey accent, big soft-shadowed cards, a living coral "voice orb" that
-   breathes. No neutral gray chrome; brand lives in warmth and roundness.
- STORY: the user feels safe to speak → trusts the read-back → watches the call →
-   hears the outcome in their own language.
- FIRST VIEWPORT: calm cream screen, generous space, a large glowing coral orb
-   centered as the invitation to speak, a friendly prompt, a soft input below;
-   language pill top-right.
- FORM: warm humane companion app (pinned by the user over the concept roll).
+ DIRECTION CONTRACT — Speakeasy visual world (seed: calm-blue, user-pinned)
+ THESIS: A calm, trustworthy companion that makes the scary English phone call
+   for you. Cool and reassuring, not a cold utility app — confidence you can hand
+   your worry to.
+ OWN-WORLD: cool blue-gray grounds (no beige), SF Rounded throughout, ONE blue
+   tint with a teal accent for highlights, big soft-shadowed cards, a living blue
+   "voice orb" that breathes. Brand lives in calm and roundness.
+ STORY: the user feels safe to speak → trusts the read-back → watches the call
+   unfold live → hears the outcome in their own language, and it's saved.
+ FIRST VIEWPORT: calm cool screen, generous space, a large glowing blue orb
+   centered as the invitation to speak, a friendly prompt, a soft input; a burger
+   menu top-left, language pill top-right.
+ FORM: calm humane companion app (blue pinned by the user over the warm world).
  FINISH: unreviewed and undocumented is unfinished; this build ends with the
    finish review, the verdict, DESIGN.md, and every shipping raster carrying its
    provenance.
 */
 
-// MARK: - Color helpers (warm palette, adapts to Dark Mode)
+// MARK: - Color helpers (cool blue palette, adapts to Dark Mode)
 
 extension Color {
     init(hex: UInt) {
@@ -30,8 +31,7 @@ extension Color {
             opacity: 1
         )
     }
-    /// A color that resolves differently in light vs dark appearance.
-    static func warm(_ light: UInt, _ dark: UInt) -> Color {
+    static func cool(_ light: UInt, _ dark: UInt) -> Color {
         Color(uiColor: UIColor { trait in
             UIColor(Color(hex: trait.userInterfaceStyle == .dark ? dark : light))
         })
@@ -39,23 +39,23 @@ extension Color {
 }
 
 enum Theme {
-    // Grounds & surfaces
-    static let ground = Color.warm(0xF5EDE1, 0x191512)
-    static let surface = Color.warm(0xFFFDF8, 0x241E19)
-    static let surfaceSunk = Color.warm(0xF0E7D8, 0x2C251E)
+    // Grounds & surfaces (cool blue-gray, never beige)
+    static let ground = Color.cool(0xEDF1F7, 0x0E1420)
+    static let surface = Color.cool(0xFCFDFF, 0x18202E)
+    static let surfaceSunk = Color.cool(0xE3EAF3, 0x1E2838)
 
-    // Ink
-    static let ink = Color.warm(0x2B2723, 0xF4ECE0)
-    static let inkSecondary = Color.warm(0x6E655B, 0xB2A798)
+    // Ink (cool slate)
+    static let ink = Color.cool(0x1B2430, 0xE9EEF6)
+    static let inkSecondary = Color.cool(0x5B6675, 0x94A2B6)
 
     // Brand
-    static let primary = Color.warm(0xE15E43, 0xF47C61)      // coral — the one tint
-    static let primaryDeep = Color.warm(0xC64E36, 0xEF6A4E)
-    static let honey = Color.warm(0xD98A24, 0xF0B152)        // warm accent (highlights only)
-    static let success = Color.warm(0x2F8F5F, 0x59C48D)
+    static let primary = Color.cool(0x2F6FE4, 0x5B8DEF)      // blue — the one tint
+    static let primaryDeep = Color.cool(0x2559C0, 0x4A7CE0)
+    static let accent = Color.cool(0x0E97A6, 0x2CC5CE)       // teal — highlights only
+    static let success = Color.cool(0x1E9A66, 0x4FC48A)
 
     // Lines
-    static let hairline = Color.warm(0xE7DCCB, 0x362E27)
+    static let hairline = Color.cool(0xDCE4EE, 0x263349)
 
     enum Space { static let xs: CGFloat = 6, s: CGFloat = 12, m: CGFloat = 18, l: CGFloat = 26, xl: CGFloat = 40 }
     enum Radius { static let card: CGFloat = 24, chip: CGFloat = 14 }
@@ -70,7 +70,7 @@ private struct SoftCard: ViewModifier {
         content
             .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(fill))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).strokeBorder(strokeColor, lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.06), radius: 18, x: 0, y: 10)
+            .shadow(color: Color.black.opacity(0.07), radius: 18, x: 0, y: 10)
     }
 }
 

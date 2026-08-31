@@ -11,6 +11,7 @@ final class SessionViewModel: ObservableObject {
     @Published var result: CallResult?
     @Published var ranked: [RankedResult]?      // multi-call comparison (C1)
     @Published var winnerReason: String?
+    @Published var activity: [String] = []      // live call transcript feed
     @Published var errorMessage: String?
     @Published var draftText: String = ""
 
@@ -26,13 +27,15 @@ final class SessionViewModel: ObservableObject {
     let speech = SpeechManager()
 
     private let api: SpeakeasyAPI
+    private let store: AppStore
     private var sessionId: String?
     private var pollTask: Task<Void, Never>?
 
     var canAcceptInput: Bool { phase == .idle || phase == .collecting || phase == .failed }
 
     /// Defaults to the live Node backend. Pass MockSpeakeasyAPI() to run offline.
-    init(api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
+    init(store: AppStore, api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
+        self.store = store
         self.api = api
     }
 
@@ -66,10 +69,12 @@ final class SessionViewModel: ObservableObject {
         let goal = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !goal.isEmpty else { return }
         let numbers = compareMode ? compareNumbers : nil
+        let facts = compareMode ? nil : store.details.asFacts   // share saved details on single calls
         run {
             self.phase = .collecting
+            self.activity = []
             let sid = try await self.ensureSession()
-            let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code, numbers: numbers)
+            let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code, numbers: numbers, facts: facts?.isEmpty == true ? nil : facts)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
             // Read the goal back aloud in the user's language.
@@ -113,6 +118,7 @@ final class SessionViewModel: ObservableObject {
         phase = .idle
         understanding = nil
         statusLine = nil
+        activity = []
         result = nil
         ranked = nil
         winnerReason = nil
@@ -140,6 +146,7 @@ final class SessionViewModel: ObservableObject {
                     await MainActor.run {
                         self.phase = s.phase
                         self.statusLine = s.statusLine
+                        if let a = s.activity { self.activity = a }
                         if let r = s.result { self.result = r }
                         if let rk = s.ranked { self.ranked = rk }
                         if let w = s.winnerReason { self.winnerReason = w }
@@ -155,10 +162,32 @@ final class SessionViewModel: ObservableObject {
                 }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
-            // Narrate the outcome aloud in the user's language.
+            // Narrate the outcome aloud and save to history.
             await MainActor.run {
-                if self.phase == .done { self.speakResult() }
+                if self.phase == .done {
+                    self.speakResult()
+                    self.saveToHistory()
+                }
             }
+        }
+    }
+
+    private func saveToHistory() {
+        let goalText = understanding?.understoodGoalEnglish ?? draftText
+        if let ranked, let winner = ranked.first {
+            store.addCall(StoredCall(
+                id: UUID().uuidString, date: Date(), languageCode: language.code,
+                goal: goalText,
+                outcome: winnerReason ?? winner.result.outcome,
+                confirmations: winner.result.confirmationNumbers,
+                transcript: "", isComparison: true))
+        } else if let r = result {
+            store.addCall(StoredCall(
+                id: UUID().uuidString, date: Date(), languageCode: language.code,
+                goal: goalText,
+                outcome: r.outcomeUserLang ?? r.outcome,
+                confirmations: r.confirmationNumbers,
+                transcript: r.transcript, isComparison: false))
         }
     }
 

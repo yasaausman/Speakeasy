@@ -15,23 +15,23 @@ struct RankedResultsView: View {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
                         Label("Best option", systemImage: "trophy.fill")
                             .font(.headline)
-                            .foregroundStyle(Theme.honey)
+                            .foregroundStyle(Theme.accent)
                         Text(reason)
                             .font(.title3.weight(.medium))
                             .foregroundStyle(Theme.ink)
                         Button(action: onReplay) {
                             Label("Play", systemImage: "speaker.wave.2.fill")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.honey)
+                                .foregroundStyle(Theme.accent)
                                 .padding(.vertical, 9).padding(.horizontal, 15)
-                                .background(Capsule().fill(Theme.honey.opacity(0.15)))
+                                .background(Capsule().fill(Theme.accent.opacity(0.15)))
                         }
                         .buttonStyle(.plain)
                         .padding(.top, 2)
                     }
                     .padding(Theme.Space.l)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .softCard(Theme.honey.opacity(0.12), stroke: Theme.honey.opacity(0.35))
+                    .softCard(Theme.accent.opacity(0.12), stroke: Theme.accent.opacity(0.35))
                 }
 
                 ForEach(Array(ranked.enumerated()), id: \.element.id) { index, item in
@@ -40,7 +40,7 @@ struct RankedResultsView: View {
                             .font(.headline.weight(.bold).monospacedDigit())
                             .foregroundStyle(index == 0 ? .white : Theme.inkSecondary)
                             .frame(width: 34, height: 34)
-                            .background(Circle().fill(index == 0 ? Theme.honey : Theme.surfaceSunk))
+                            .background(Circle().fill(index == 0 ? Theme.accent : Theme.surfaceSunk))
                         VStack(alignment: .leading, spacing: 4) {
                             Text(item.number)
                                 .font(.subheadline.weight(.semibold))

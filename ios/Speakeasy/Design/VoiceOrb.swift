@@ -7,8 +7,8 @@ struct VoiceOrb: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var breathe = false
 
-    private var tint: Color { isListening ? Color.warm(0xE0454A, 0xF06A6F) : Theme.primary }
-    private var tintDeep: Color { isListening ? Color.warm(0xC5383D, 0xE0555A) : Theme.primaryDeep }
+    private var tint: Color { isListening ? Color.cool(0xE0454A, 0xF06A6F) : Theme.primary }
+    private var tintDeep: Color { isListening ? Color.cool(0xC5383D, 0xE0555A) : Theme.primaryDeep }
 
     var body: some View {
         ZStack {

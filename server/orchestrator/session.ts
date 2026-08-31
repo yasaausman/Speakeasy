@@ -42,8 +42,10 @@ export interface Session {
   brief?: CallBrief; // the English brief handed to CALL-E (single mode)
   numbers?: string[]; // destinations (multi mode)
   understanding?: GoalUnderstanding;
+  facts?: Record<string, string>; // saved details the agent can share (single mode)
   runId?: string;
   statusLine?: string | null;
+  activity?: string[]; // live transcript lines during the call (single mode)
   result?: NarratedResult; // single mode
   ranked?: RankedResult[]; // multi mode, best-first
   winnerReason?: string | null; // multi mode, in the user's language
@@ -57,6 +59,7 @@ export interface SessionStateDTO {
   phase: SessionPhase;
   mode: SessionMode;
   statusLine: string | null;
+  activity: string[] | null;
   understanding: GoalUnderstanding | null;
   result: NarratedResult | null;
   ranked: RankedResult[] | null;
@@ -70,6 +73,7 @@ export function toDTO(s: Session): SessionStateDTO {
     phase: s.phase,
     mode: s.mode,
     statusLine: s.statusLine ?? null,
+    activity: s.activity ?? null,
     understanding: s.understanding ?? null,
     result: s.result ?? null,
     ranked: s.ranked ?? null,

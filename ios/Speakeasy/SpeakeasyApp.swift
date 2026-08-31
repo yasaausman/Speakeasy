@@ -4,7 +4,7 @@ import SwiftUI
 struct SpeakeasyApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
                 .tint(Theme.primary)       // one interactive tint (HIG)
                 .fontDesign(.rounded)      // SF Rounded — warm, friendly, legible
         }

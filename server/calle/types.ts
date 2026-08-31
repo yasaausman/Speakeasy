@@ -111,6 +111,8 @@ export type CallResult = {
   structured: Record<string, unknown>; // schema-validated structured data when present
   confirmationNumbers: string[];
   transcript: string; // English, for debugging and the demo video
+  appointmentText?: string; // e.g. "Tuesday 9:40am" — for Add to Calendar
+  provider?: string; // e.g. "Dr. Lee"
 };
 
 /** Map a raw CALL-E terminal status onto our normalized outcome status. */

@@ -196,17 +196,21 @@ export class FakeCalleTransport implements CalleTransport {
     const st = this.runs.get(input.run_id) ?? { number: "unknown", count: 0 };
     st.count += 1;
     this.runs.set(input.run_id, st);
-    const done = st.count >= 2;
-    const status = done ? "COMPLETED" : "IN_PROGRESS";
     const s = scenarioFor(st.number);
+    const script = fakeScript(s);
+    // Reveal ~2 conversation lines per poll → a live-feeling transcript feed.
+    const revealed = Math.min(st.count * 2, script.length);
+    const done = st.count >= 4;
+    const status = done ? "COMPLETED" : "IN_PROGRESS";
     this.log("fake:get_call_run", { run_id: input.run_id, status });
     return {
       run_id: input.run_id,
       status,
       summary: done
         ? `Appointment available ${s.day} at ${s.time} with ${s.provider}. They accept Medicaid. Confirmation number ${s.conf}.`
-        : "Dialing and navigating the phone menu…",
-      transcript: done ? fakeTranscript(s) : "",
+        : "Speaking with reception…",
+      transcript: done ? script.join("\n") : "",
+      activity: script.slice(0, revealed).map((message) => ({ kind: "callee_realtime", message })),
       details: done
         ? { appointment: `${s.day} ${s.time}`, provider: s.provider, accepts_insurance: true, confirmation: s.conf, soonest_rank: s.soonestRank }
         : {},
@@ -220,15 +224,17 @@ export class FakeCalleTransport implements CalleTransport {
   }
 }
 
-function fakeTranscript(s: FakeScenario): string {
+function fakeScript(s: FakeScenario): string[] {
   return [
-    "AGENT: Hi, I'm an AI assistant calling on behalf of a patient to book an appointment.",
-    "REP: Sure — what insurance do you have?",
-    "AGENT: The patient has Medicaid.",
-    `REP: Great, we accept that. We have ${s.day} at ${s.time} with ${s.provider}.`,
-    "AGENT: That works. Please book it.",
-    `REP: Done. Confirmation number is ${s.conf}.`,
-  ].join("\n");
+    "Call is ringing…",
+    "Call connected.",
+    "Bot: Hi, I'm an AI assistant calling on behalf of a patient.",
+    "Rep: Sure — what insurance do you have?",
+    "Bot: The patient has Medicaid.",
+    `Rep: We can do ${s.day} at ${s.time} with ${s.provider}.`,
+    "Bot: That works — please book it.",
+    `Rep: Booked. Confirmation number is ${s.conf}.`,
+  ];
 }
 
 // ── High-level client ────────────────────────────────────────────────────────
@@ -356,6 +362,8 @@ export class CalleClient {
     const structured = (r.details && typeof r.details === "object" ? r.details : {}) as Record<string, unknown>;
     const outcome = r.summary?.trim() || `Call ended with status ${rawStatus || "UNKNOWN"}.`;
     const confirmationNumbers = collectConfirmationNumbers(structured, outcome);
+    const appointmentText = typeof structured.appointment === "string" ? structured.appointment : undefined;
+    const provider = typeof structured.provider === "string" ? structured.provider : undefined;
     return {
       status: normalizeStatus(rawStatus),
       rawStatus,
@@ -363,6 +371,8 @@ export class CalleClient {
       structured,
       confirmationNumbers,
       transcript: r.transcript ?? "",
+      appointmentText,
+      provider,
     };
   }
 }

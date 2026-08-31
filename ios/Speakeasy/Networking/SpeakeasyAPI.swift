@@ -9,7 +9,7 @@ import Foundation
 ///   - LiveSpeakeasyAPI: real HTTP calls to the Node backend (Phase M1+).
 protocol SpeakeasyAPI {
     func createSession(lang: String) async throws -> String
-    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?) async throws -> GoalUnderstanding
+    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?, facts: [String: String]?) async throws -> GoalUnderstanding
     func confirm(sessionId: String) async throws
     func fetchSession(sessionId: String) async throws -> SessionState
 }
@@ -25,7 +25,7 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
         return "mock-session-1"
     }
 
-    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?) async throws -> GoalUnderstanding {
+    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?, facts: [String: String]?) async throws -> GoalUnderstanding {
         try await Task.sleep(nanoseconds: 500_000_000)
         let u = GoalUnderstanding(
             understoodGoalEnglish: "Test call: greet the person and confirm they can hear the call clearly.",
@@ -69,6 +69,7 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
             phase: phase,
             mode: "single",
             statusLine: status,
+            activity: nil,
             understanding: understanding,
             result: result,
             ranked: nil,
@@ -84,7 +85,9 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
             outcome: "The call connected and the person confirmed they could hear clearly.",
             outcomeUserLang: "La llamada se conectó y la persona confirmó que se escuchaba bien.",
             confirmationNumbers: [],
-            transcript: "AGENT: Hi, this is an automated test call. Can you hear me clearly?\nREP: Yes, loud and clear.\nAGENT: Great, thank you. Goodbye."
+            transcript: "AGENT: Hi, this is an automated test call. Can you hear me clearly?\nREP: Yes, loud and clear.\nAGENT: Great, thank you. Goodbye.",
+            appointmentText: nil,
+            provider: nil
         )
     }
 }
@@ -101,9 +104,9 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
         return r.sessionId
     }
 
-    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?) async throws -> GoalUnderstanding {
-        struct Body: Codable { let text: String; let lang: String; let numbers: [String]? }
-        return try await post("/api/sessions/\(sessionId)/goal", body: Body(text: text, lang: lang, numbers: numbers))
+    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?, facts: [String: String]?) async throws -> GoalUnderstanding {
+        struct Body: Codable { let text: String; let lang: String; let numbers: [String]?; let facts: [String: String]? }
+        return try await post("/api/sessions/\(sessionId)/goal", body: Body(text: text, lang: lang, numbers: numbers, facts: facts))
     }
 
     func confirm(sessionId: String) async throws {

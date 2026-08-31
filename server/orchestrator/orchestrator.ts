@@ -34,7 +34,7 @@ export class Orchestrator {
     // Fake CALL-E transport by default; slower fake polling so live status is visible.
     this.calle =
       opts.calle ??
-      createCalleClient({ poll: { firstDelayMs: 1500, intervalMs: 1500, maxWaitMs: 30_000 } });
+      createCalleClient({ poll: { firstDelayMs: 1800, intervalMs: 2200, maxWaitMs: 30_000 } });
     this.translator = opts.translator ?? createTranslator();
     this.ranker = opts.ranker ?? createRanker();
     this.translatorName = this.translator.name;
@@ -53,6 +53,7 @@ export class Orchestrator {
     text: string,
     userLang: LangCode,
     numbers?: string[],
+    facts?: Record<string, string>,
   ): Promise<GoalUnderstanding> {
     const s = this.store.get(sessionId);
     if (!s) throw new Error("unknown session");
@@ -73,6 +74,7 @@ export class Orchestrator {
       targetNumber: multi ? `${targets.length} places` : targets[0],
     };
 
+    const cleanFacts = cleanupFacts(facts);
     this.store.update(sessionId, {
       phase: "confirming",
       mode: multi ? "multi" : "single",
@@ -80,7 +82,8 @@ export class Orchestrator {
       originalText: text,
       englishGoal,
       numbers: targets,
-      brief: multi ? undefined : buildBrief(englishGoal, targets[0]),
+      facts: cleanFacts,
+      brief: multi ? undefined : buildBrief(englishGoal, targets[0], cleanFacts),
       understanding,
     });
     return understanding;
@@ -95,7 +98,7 @@ export class Orchestrator {
 
     if (s.mode === "multi" && s.englishGoal && s.numbers) {
       this.store.update(sessionId, { phase: "calling", statusLine: `Calling ${s.numbers.length} places…` });
-      void this.runFanout(sessionId, s.englishGoal, s.numbers, s.userLang);
+      void this.runFanout(sessionId, s.englishGoal, s.numbers, s.userLang, s.facts);
       return;
     }
     if (!s.brief) throw new Error("session has no brief");
@@ -113,6 +116,7 @@ export class Orchestrator {
         this.store.update(sessionId, {
           phase: "polling",
           statusLine: r.summary?.trim() || `Status: ${r.status ?? "…"}`,
+          activity: extractActivity(r.activity),
         });
       });
 
@@ -139,6 +143,7 @@ export class Orchestrator {
     englishGoal: string,
     numbers: string[],
     userLang: LangCode,
+    facts?: Record<string, string>,
   ): Promise<void> {
     try {
       this.store.update(sessionId, { phase: "polling", statusLine: `Calling ${numbers.length} places…` });
@@ -146,7 +151,7 @@ export class Orchestrator {
       const results: RankedResult[] = await Promise.all(
         numbers.map(async (number): Promise<RankedResult> => {
           try {
-            const result = await this.calle.runBrief(buildBrief(englishGoal, number));
+            const result = await this.calle.runBrief(buildBrief(englishGoal, number, facts));
             const outcomeUserLang = await this.translator.fromEnglish(result.outcome, userLang);
             return { number, result: { ...result, outcomeUserLang } };
           } catch (err) {
@@ -193,16 +198,40 @@ export class Orchestrator {
 /** Compose an English CallBrief from the translated goal. AI disclosure is
  *  always included (golden rule #6). Facts/constraints are minimal for now —
  *  a later milestone can collect them from the user. */
-function buildBrief(englishGoal: string, targetNumber: string): CallBrief {
+function buildBrief(englishGoal: string, targetNumber: string, facts?: Record<string, string>): CallBrief {
   return {
     objective: englishGoal,
     targetNumber,
     targetRegion: "US",
     language: "English",
     constraints: [],
-    facts: {},
+    facts: facts ?? {},
     successCondition: "the task in the objective is completed and any confirmation number is captured",
     fallback: "if the task cannot be completed, report clearly what was and wasn't possible",
     agentDisclosure: DISCLOSURE,
   };
+}
+
+/** Drop empty keys/values from the saved-details facts. */
+function cleanupFacts(facts?: Record<string, string>): Record<string, string> | undefined {
+  if (!facts) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(facts)) {
+    const key = k.trim();
+    const val = typeof v === "string" ? v.trim() : "";
+    if (key && val) out[key] = val;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** Pull human-readable message strings out of CALL-E's activity feed. */
+function extractActivity(activity: unknown): string[] {
+  if (!Array.isArray(activity)) return [];
+  const lines: string[] = [];
+  for (const item of activity) {
+    if (item && typeof item === "object" && typeof (item as { message?: unknown }).message === "string") {
+      lines.push((item as { message: string }).message);
+    }
+  }
+  return lines.slice(-14); // keep the most recent lines
 }

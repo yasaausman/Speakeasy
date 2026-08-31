@@ -8,6 +8,8 @@ struct ResultCardView: View {
     var onDone: () -> Void
 
     @State private var showTranscript = false
+    @State private var calState: CalState = .idle
+    private enum CalState { case idle, added, denied }
 
     var body: some View {
         ScrollView {
@@ -44,14 +46,28 @@ struct ResultCardView: View {
                         }
                     }
 
-                    Button(action: onReplay) {
-                        Label("Play narration", systemImage: "speaker.wave.2.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.primary)
-                            .padding(.vertical, 10).padding(.horizontal, 16)
-                            .background(Capsule().fill(Theme.primary.opacity(0.12)))
+                    HStack(spacing: Theme.Space.s) {
+                        Button(action: onReplay) {
+                            Label("Play narration", systemImage: "speaker.wave.2.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Theme.primary)
+                                .padding(.vertical, 10).padding(.horizontal, 16)
+                                .background(Capsule().fill(Theme.primary.opacity(0.12)))
+                        }
+                        .buttonStyle(.plain)
+
+                        if let appt = result.appointmentText {
+                            Button { addToCalendar(appt) } label: {
+                                Label(calLabel, systemImage: calIcon)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.accent)
+                                    .padding(.vertical, 10).padding(.horizontal, 16)
+                                    .background(Capsule().fill(Theme.accent.opacity(0.12)))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(calState == .added)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
                 .padding(Theme.Space.l)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,6 +97,20 @@ struct ResultCardView: View {
         }
     }
 
+    private var calLabel: String {
+        switch calState { case .added: return "Added"; case .denied: return "Calendar off"; case .idle: return "Add to Calendar" }
+    }
+    private var calIcon: String {
+        switch calState { case .added: return "checkmark"; case .denied: return "calendar.badge.exclamationmark"; case .idle: return "calendar.badge.plus" }
+    }
+    private func addToCalendar(_ appt: String) {
+        Task {
+            let title = result.provider.map { "Appointment — \($0)" } ?? "Appointment"
+            let outcome = await CalendarService.addEvent(title: title, notes: result.outcome, appointmentText: appt)
+            await MainActor.run { calState = (outcome == .added) ? .added : .denied }
+        }
+    }
+
     private var statusTitle: String {
         switch result.status {
         case .completed: return "Done"
@@ -101,7 +131,7 @@ struct ResultCardView: View {
     private var statusColor: Color {
         switch result.status {
         case .completed: return Theme.success
-        case .no_answer, .voicemail, .busy: return Theme.honey
+        case .no_answer, .voicemail, .busy: return Theme.accent
         default: return Theme.primaryDeep
         }
     }
