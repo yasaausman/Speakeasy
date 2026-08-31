@@ -76,7 +76,7 @@ export class GeminiTranslator implements Translator {
   readonly name: string;
   constructor(
     private readonly apiKey: string,
-    private readonly model = process.env.GEMINI_MODEL || "gemini-2.0-flash",
+    private readonly model = process.env.GEMINI_MODEL || "gemini-flash-latest",
   ) {
     this.name = `gemini(${this.model})`;
   }

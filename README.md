@@ -53,13 +53,10 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 - **A1 · Backend API + orchestrator** — Fastify service (`POST /api/sessions`, `/goal`, `/confirm`, `GET /api/sessions/:id`) over the `server/calle/` client + the state-machine (confirm gate, background poll loop). Verified end-to-end with the fake transport — **zero calls**.
 - **A2 · App wired to the backend** — app defaults to `LiveSpeakeasyAPI`; verified in the simulator app ⇄ backend ⇄ CALL-E (dry-run): goal → readback from the orchestrator → confirm → result card with confirmation number.
 - **Multi-language** — English, Spanish, Hindi, Arabic. In-app language picker; **RTL layout** for Arabic (verified). Language flows through the backend translation layer.
+- **A3 · First real call** ☎️ — a real CALL-E call completed end-to-end (`COMPLETED`, real transcript, task confirmed). Fixed auth (reuse the `calle` CLI token) and result extraction (CALL-E nests `result.{summary,transcript}`) along the way.
+- **A4 · Live translation** — Gemini wired (`gemini-flash-latest`); verified in the app: English goal → real Spanish/Hindi/Arabic readback + narration, both directions. `.env` auto-loaded by the backend.
 
 ### ⬜ To do
-
-**Track A — finish real calls**
-
-- **A3 · First real call** — finish `calle auth login`, then one deliberate real smoke call (`npm run smoke:real`, or via the app).
-- **A4 · Translation live** — the translation layer is built (`server/language/translate.ts`, Gemini/OpenAI/passthrough) and wired; set `GEMINI_API_KEY` (preferred) to switch it from passthrough to real ES/HI/AR ⇄ EN.
 
 **Track B — make it talk (voice)**
 

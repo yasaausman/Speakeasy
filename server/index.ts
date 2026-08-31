@@ -9,6 +9,7 @@
  *   POST /api/sessions/:id/confirm                            → 202 (call starts)
  *   GET  /api/sessions/:id                                    → SessionStateDTO
  */
+import "./env.js"; // must be first — loads .env before anything reads provider keys
 import Fastify from "fastify";
 
 import { LANGUAGES, coerceLang } from "./language/languages.js";
