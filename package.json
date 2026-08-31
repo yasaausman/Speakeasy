@@ -1,0 +1,20 @@
+{
+  "name": "speakeasy",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Speak or type what you need in your language. Speakeasy makes the English phone calls via CALL-E and tells you what happened, in your language.",
+  "scripts": {
+    "smoke:fake": "tsx scripts/smoke-call.ts",
+    "smoke:real": "tsx scripts/smoke-call.ts --real",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}
