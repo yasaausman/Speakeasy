@@ -12,14 +12,16 @@ final class SessionViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var draftText: String = ""
 
-    /// Demo language pair is locked to Spanish for the hackathon (build-plan §1).
-    let userLang = "es"
+    /// User-selected language (English/Spanish/Hindi/Arabic). The call stays English.
+    @Published var language: AppLanguage = .spanish
+    let languages = AppLanguage.all
 
     private let api: SpeakeasyAPI
     private var sessionId: String?
     private var pollTask: Task<Void, Never>?
 
-    init(api: SpeakeasyAPI = MockSpeakeasyAPI()) {
+    /// Defaults to the live Node backend. Pass MockSpeakeasyAPI() to run offline.
+    init(api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
         self.api = api
     }
 
@@ -32,7 +34,7 @@ final class SessionViewModel: ObservableObject {
         run {
             self.phase = .collecting
             let sid = try await self.ensureSession()
-            let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.userLang)
+            let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
         }
@@ -70,7 +72,7 @@ final class SessionViewModel: ObservableObject {
 
     private func ensureSession() async throws -> String {
         if let sid = sessionId { return sid }
-        let sid = try await api.createSession()
+        let sid = try await api.createSession(lang: language.code)
         sessionId = sid
         return sid
     }

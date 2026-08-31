@@ -8,7 +8,7 @@ import Foundation
 ///     simulator today, before the backend or Xcode auth exists.
 ///   - LiveSpeakeasyAPI: real HTTP calls to the Node backend (Phase M1+).
 protocol SpeakeasyAPI {
-    func createSession() async throws -> String
+    func createSession(lang: String) async throws -> String
     func submitGoal(sessionId: String, text: String, lang: String) async throws -> GoalUnderstanding
     func confirm(sessionId: String) async throws
     func fetchSession(sessionId: String) async throws -> SessionState
@@ -20,7 +20,7 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
     private var understanding: GoalUnderstanding?
     private var pollTicks = 0
 
-    func createSession() async throws -> String {
+    func createSession(lang: String) async throws -> String {
         phase = .collecting
         return "mock-session-1"
     }
@@ -91,9 +91,10 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
     /// Simulator reaches the Mac's localhost directly. Override for a device/tunnel.
     var baseURL: URL = URL(string: "http://localhost:3000")!
 
-    func createSession() async throws -> String {
+    func createSession(lang: String) async throws -> String {
+        struct Body: Codable { let lang: String }
         struct Resp: Codable { let sessionId: String }
-        let r: Resp = try await post("/api/sessions", body: EmptyBody())
+        let r: Resp = try await post("/api/sessions", body: Body(lang: lang))
         return r.sessionId
     }
 

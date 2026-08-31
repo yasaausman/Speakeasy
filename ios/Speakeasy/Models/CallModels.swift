@@ -1,5 +1,24 @@
 import Foundation
 
+// MARK: - Supported user languages (mirrors server/language/languages.ts)
+// The phone call is always English; this is the language the USER uses.
+struct AppLanguage: Identifiable, Hashable {
+    let code: String    // "en" | "es" | "hi" | "ar"
+    let name: String    // English name
+    let endonym: String // name in its own script
+    let rtl: Bool
+    var id: String { code }
+
+    static let all: [AppLanguage] = [
+        AppLanguage(code: "en", name: "English", endonym: "English", rtl: false),
+        AppLanguage(code: "es", name: "Spanish", endonym: "Español", rtl: false),
+        AppLanguage(code: "hi", name: "Hindi", endonym: "हिन्दी", rtl: false),
+        AppLanguage(code: "ar", name: "Arabic", endonym: "العربية", rtl: true),
+    ]
+
+    static let spanish = all[1]
+}
+
 // MARK: - Session phase (mirrors the backend orchestrator state machine)
 // IDLE → COLLECTING → CONFIRMING → CALLING → POLLING → NARRATING → DONE, plus FAILED.
 enum SessionPhase: String, Codable {

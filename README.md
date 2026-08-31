@@ -49,16 +49,17 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 ### ✅ Done
 
 - **M0 · CALL-E proven** — `server/calle/` client (types, OAuth transport, `CalleClient`) drives `plan_call → run_call → poll get_call_run` and normalizes to a `CallResult`. `scripts/smoke-call.ts` runs the full workflow; **dry-run green**. (Real call still pending CALL-E auth.)
-- **M1 · iOS app shell** — SwiftUI app runs in the simulator (iPhone 17 Pro, iOS 26.5) against a built-in mock. Full loop verified on-device: type a goal → **confirm gate** (Spanish readback) → mock call → translated Spanish **result card**. No backend, no calls.
+- **M1 · iOS app shell** — SwiftUI app runs in the simulator (iPhone 17 Pro, iOS 26.5). Full loop verified on-device: goal → **confirm gate** → call → **result card**.
+- **A1 · Backend API + orchestrator** — Fastify service (`POST /api/sessions`, `/goal`, `/confirm`, `GET /api/sessions/:id`) over the `server/calle/` client + the state-machine (confirm gate, background poll loop). Verified end-to-end with the fake transport — **zero calls**.
+- **A2 · App wired to the backend** — app defaults to `LiveSpeakeasyAPI`; verified in the simulator app ⇄ backend ⇄ CALL-E (dry-run): goal → readback from the orchestrator → confirm → result card with confirmation number.
+- **Multi-language** — English, Spanish, Hindi, Arabic. In-app language picker; **RTL layout** for Arabic (verified). Language flows through the backend translation layer.
 
 ### ⬜ To do
 
-**Track A — make the calls real (backend)**
+**Track A — finish real calls**
 
-- **A1 · Backend API + orchestrator** — Node HTTP service (`POST /api/sessions`, `/goal`, `/confirm`, `GET /api/sessions/:id`) over the `server/calle/` client and the state machine (confirm gate + poll loop). Testable with the fake transport — **zero calls**.
-- **A2 · Wire the app to the backend** — swap `MockSpeakeasyAPI` → `LiveSpeakeasyAPI`; English text end-to-end, app ⇄ backend ⇄ CALL-E (still dry-run).
-- **A3 · First real call** — finish `calle auth login`, then one deliberate real smoke call.
-- **A4 · Spanish translation** — backend translates ES→EN (goal) and EN→ES (result). Locks the demo language pair.
+- **A3 · First real call** — finish `calle auth login`, then one deliberate real smoke call (`npm run smoke:real`, or via the app).
+- **A4 · Translation live** — the translation layer is built (`server/language/translate.ts`) and wired; set `OPENAI_API_KEY` to switch it from passthrough to real ES/HI/AR ⇄ EN.
 
 **Track B — make it talk (voice)**
 
@@ -76,32 +77,52 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 ios/                  native SwiftUI app (see ios/README.md)
   project.yml         XcodeGen spec → generates Speakeasy.xcodeproj
   Speakeasy/          app sources (Models, Networking, ViewModels, Views, Speech)
-server/calle/         the ONLY place that touches CALL-E MCP
-  types.ts            CallBrief, CallResult, the real tool I/O, terminal statuses
-  oauth.ts            Streamable-HTTP + OAuth transport (token cache under .speakeasy/)
-  client.ts           CalleClient: planCall/runCall/getCallRun, pollRun, runBrief
+server/
+  index.ts            Fastify HTTP API the app calls
+  calle/              the ONLY place that touches CALL-E MCP
+    client.ts         CalleClient: planCall/runCall/getCallRun, pollRun, runBrief
+    oauth.ts          Streamable-HTTP + OAuth transport (token cache under .speakeasy/)
+    types.ts          CallBrief, CallResult, real tool I/O, terminal statuses
+  orchestrator/       session store + state machine (confirm gate, poll loop)
+  language/           supported languages + translation layer (OpenAI or passthrough)
 scripts/
   smoke-call.ts       CALL-E end-to-end smoke test (fake by default, --real to call)
 ```
 
-## Setup
+## Run it (app + backend, no calls)
 
-**Backend / CALL-E:**
+1. **Start the backend** (uses the fake CALL-E transport by default — zero calls):
 
-```bash
-npm install
-cp .env.example .env
-npm run smoke:fake      # full plan→run→poll workflow against a local fake — no auth, no calls
-```
+   ```bash
+   npm install
+   cp .env.example .env
+   npm run dev            # Fastify on :3000
+   ```
 
-Real smoke call (spends one of your 20 free calls) — first authenticate the `calle` CLI
+2. **Run the app** (the simulator reaches the Mac's `localhost:3000`):
+
+   ```bash
+   cd ios && xcodegen generate
+   xcodebuild -project Speakeasy.xcodeproj -scheme Speakeasy \
+     -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build build
+   xcrun simctl boot "iPhone 17 Pro"; open -a Simulator
+   xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/Speakeasy.app
+   xcrun simctl launch booted com.speakeasy.app
+   ```
+
+   Type a goal → confirm → watch the (fake) call complete → result card. Pick a language
+   from the globe menu; Arabic switches the UI to RTL.
+
+**Real translation:** set `OPENAI_API_KEY` in `.env` to translate ES/HI/AR ⇄ EN (otherwise passthrough).
+
+**Real call** (spends one of your 20 free calls) — first authenticate the `calle` CLI
 (see [call-e-integrations](https://github.com/CALLE-AI/call-e-integrations)):
 
 ```bash
 SMOKE_TARGET_NUMBER=+1... npm run smoke:real
 ```
 
-**iOS app:** see [ios/README.md](ios/README.md) (`brew install xcodegen`, then `cd ios && xcodegen generate`).
+**iOS project details:** see [ios/README.md](ios/README.md).
 
 ## Guardrails (non-negotiable)
 

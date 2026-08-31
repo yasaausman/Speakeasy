@@ -23,7 +23,28 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .navigationTitle("Speakeasy")
             .animation(.easeInOut, value: vm.phase)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Language", selection: $vm.language) {
+                            ForEach(vm.languages) { lang in
+                                Text("\(lang.endonym) — \(lang.name)").tag(lang)
+                            }
+                        }
+                    } label: {
+                        Label(vm.language.endonym, systemImage: "globe")
+                    }
+                    // Don't switch language mid-call.
+                    .disabled(!canPickLanguage)
+                }
+            }
         }
+        // Flip the whole UI for right-to-left languages (Arabic).
+        .environment(\.layoutDirection, vm.language.rtl ? .rightToLeft : .leftToRight)
+    }
+
+    private var canPickLanguage: Bool {
+        vm.phase == .idle || vm.phase == .collecting || vm.phase == .failed
     }
 
     // MARK: Input (voice + text)

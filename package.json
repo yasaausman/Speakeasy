@@ -5,12 +5,15 @@
   "type": "module",
   "description": "Speak or type what you need in your language. Speakeasy makes the English phone calls via CALL-E and tells you what happened, in your language.",
   "scripts": {
+    "dev": "tsx watch server/index.ts",
+    "start": "tsx server/index.ts",
     "smoke:fake": "tsx scripts/smoke-call.ts",
     "smoke:real": "tsx scripts/smoke-call.ts --real",
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "fastify": "^5.12.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
