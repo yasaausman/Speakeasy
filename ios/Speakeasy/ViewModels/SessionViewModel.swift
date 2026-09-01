@@ -19,6 +19,10 @@ final class SessionViewModel: ObservableObject {
     @Published var compareMode: Bool = false
     let compareNumbers = ["+13120001111", "+13120002222", "+13120003333"]
 
+    /// Specific number to call (from the confirm screen / Contacts). nil = default.
+    @Published var targetNumber: String?
+    private(set) var lastGoalText = ""
+
     /// User-selected language (English/Spanish/Hindi/Arabic). The call stays English.
     @Published var language: AppLanguage = .spanish
     let languages = AppLanguage.all
@@ -68,22 +72,56 @@ final class SessionViewModel: ObservableObject {
     func submitGoal(_ text: String) {
         let goal = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !goal.isEmpty else { return }
-        let numbers = compareMode ? compareNumbers : nil
+        lastGoalText = goal
+        let numbers: [String]? = compareMode ? compareNumbers : (targetNumber.map { [$0] })
         let facts = compareMode ? nil : store.details.asFacts   // share saved details on single calls
         run {
             self.phase = .collecting
             self.activity = []
+            self.result = nil; self.ranked = nil; self.winnerReason = nil
             let sid = try await self.ensureSession()
             let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code, numbers: numbers, facts: facts?.isEmpty == true ? nil : facts)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
-            // Read the goal back aloud in the user's language.
-            self.speech.speak(u.readbackUserLang, localeId: self.language.ttsLocale)
+            self.narrate(u.readbackUserLang)   // read the goal back (unless text-forward)
         }
     }
 
-    /// Replay the spoken narration (single result, or the multi-call winner).
-    func speakResult() {
+    /// Refine the request before calling (editable brief) — re-runs with the note.
+    func amend(_ note: String) {
+        let n = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !n.isEmpty, !lastGoalText.isEmpty else { return }
+        submitGoal("\(lastGoalText). Also: \(n)")
+    }
+
+    /// Re-run the same request (after no-answer, a gap, or a failure).
+    func retry() {
+        let goal = lastGoalText
+        let number = targetNumber
+        guard !goal.isEmpty else { return }
+        reset()
+        targetNumber = number
+        submitGoal(goal)
+    }
+
+    /// After a comparison, call the winning place to actually book it.
+    func bookWinner(number: String) {
+        let goal = lastGoalText.isEmpty ? "Book an appointment" : "Book an appointment. \(lastGoalText)"
+        reset()
+        compareMode = false
+        targetNumber = number
+        submitGoal(goal)
+    }
+
+    /// Speak only when not in text-forward (Deaf/HoH) mode.
+    private func narrate(_ text: String) {
+        guard !store.textForward else { return }
+        speech.speak(text, localeId: language.ttsLocale)
+    }
+
+    /// Replay the narration. `force` (an explicit Play tap) speaks even in text-forward mode.
+    func speakResult(force: Bool = true) {
+        guard force || !store.textForward else { return }
         if let reason = winnerReason {
             speech.speak(reason, localeId: language.ttsLocale)
             return
@@ -124,6 +162,7 @@ final class SessionViewModel: ObservableObject {
         winnerReason = nil
         errorMessage = nil
         draftText = ""
+        targetNumber = nil
         sessionId = nil
     }
 
@@ -165,7 +204,7 @@ final class SessionViewModel: ObservableObject {
             // Narrate the outcome aloud and save to history.
             await MainActor.run {
                 if self.phase == .done {
-                    self.speakResult()
+                    self.speakResult(force: false)   // auto-narrate (respects text-forward)
                     self.saveToHistory()
                 }
             }

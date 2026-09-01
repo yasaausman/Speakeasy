@@ -113,6 +113,10 @@ export type CallResult = {
   transcript: string; // English, for debugging and the demo video
   appointmentText?: string; // e.g. "Tuesday 9:40am" — for Add to Calendar
   provider?: string; // e.g. "Dr. Lee"
+  confidence?: { score: number; label: string }; // completion confidence
+  evidence?: string[]; // why we believe the task was done
+  gaps?: string[]; // info the rep asked for that wasn't provided
+  taskCompleted?: boolean; // whether the task itself succeeded (COMPLETED ≠ success)
 };
 
 /** Map a raw CALL-E terminal status onto our normalized outcome status. */

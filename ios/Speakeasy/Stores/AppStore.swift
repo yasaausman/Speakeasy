@@ -7,12 +7,15 @@ import SwiftUI
 final class AppStore: ObservableObject {
     @Published var details: SavedDetails { didSet { save(details, key: Keys.details) } }
     @Published var history: [StoredCall] { didSet { save(history, key: Keys.history) } }
+    /// Text-forward (Deaf / hard-of-hearing) mode: no spoken audio, text only.
+    @Published var textForward: Bool { didSet { UserDefaults.standard.set(textForward, forKey: Keys.textForward) } }
 
-    private enum Keys { static let details = "speakeasy.details", history = "speakeasy.history" }
+    private enum Keys { static let details = "speakeasy.details", history = "speakeasy.history", textForward = "speakeasy.textForward" }
 
     init() {
         details = AppStore.load(SavedDetails.self, key: Keys.details) ?? SavedDetails()
         history = AppStore.load([StoredCall].self, key: Keys.history) ?? []
+        textForward = UserDefaults.standard.bool(forKey: Keys.textForward)
     }
 
     func addCall(_ call: StoredCall) {

@@ -172,48 +172,69 @@ function scenarioFor(number: string): FakeScenario {
 }
 
 export class FakeCalleTransport implements CalleTransport {
-  private plans = new Map<string, string>(); // plan_id -> first to_phone
-  private runs = new Map<string, { number: string; count: number }>();
+  private plans = new Map<string, { number: string; userInput: string }>();
+  private runs = new Map<string, { number: string; userInput: string; count: number }>();
   private seq = 0;
   constructor(private readonly log: Logger = defaultLogger) {}
 
   async planCall(input: PlanCallInput): Promise<PlanCallResult> {
     const planId = `fake-plan-${++this.seq}`;
-    this.plans.set(planId, input.to_phones?.[0] ?? "unknown");
+    this.plans.set(planId, { number: input.to_phones?.[0] ?? "unknown", userInput: input.user_input ?? "" });
     this.log("fake:plan_call", { goal: input.goal ?? null, to_phones: input.to_phones ?? null });
     return { plan_id: planId, confirm_token: "fake-confirm-token", ready_to_run: true, raw: { plan_id: planId, ready_to_run: true } };
   }
 
   async runCall(input: RunCallInput): Promise<RunCallResult> {
-    const number = this.plans.get(input.plan_id) ?? "unknown";
+    const plan = this.plans.get(input.plan_id) ?? { number: "unknown", userInput: "" };
     const runId = `fake-run-${++this.seq}`;
-    this.runs.set(runId, { number, count: 0 });
+    this.runs.set(runId, { number: plan.number, userInput: plan.userInput, count: 0 });
     this.log("fake:run_call", { plan_id: input.plan_id });
     return { run_id: runId, status: "QUEUED", raw: { run_id: runId, status: "QUEUED" } };
   }
 
   async getCallRun(input: GetCallRunInput): Promise<GetCallRunResult> {
-    const st = this.runs.get(input.run_id) ?? { number: "unknown", count: 0 };
+    const st = this.runs.get(input.run_id) ?? { number: "unknown", userInput: "", count: 0 };
     st.count += 1;
     this.runs.set(input.run_id, st);
     const s = scenarioFor(st.number);
-    const script = fakeScript(s);
-    // Reveal ~2 conversation lines per poll → a live-feeling transcript feed.
+    // Demo of gap-surfacing: if the brief didn't include an insurance fact, the
+    // office can't book yet and asks for it. Providing insurance completes it.
+    const hasInsurance = /insurance:/i.test(st.userInput);
+    const script = fakeScript(s, hasInsurance);
     const revealed = Math.min(st.count * 2, script.length);
     const done = st.count >= 4;
     const status = done ? "COMPLETED" : "IN_PROGRESS";
     this.log("fake:get_call_run", { run_id: input.run_id, status });
+
+    const doneDetails: Record<string, unknown> = hasInsurance
+      ? {
+          appointment: `${s.day} ${s.time}`, provider: s.provider, accepts_insurance: true,
+          confirmation: s.conf, soonest_rank: s.soonestRank, task_completed: true,
+          confidence: { score: 0.9, label: "high" },
+          evidence: [
+            "A live receptionist answered and confirmed availability.",
+            `They offered ${s.day} at ${s.time} with ${s.provider}.`,
+            `The booking was confirmed with number ${s.conf}.`,
+          ],
+        }
+      : {
+          provider: s.provider, task_completed: false, soonest_rank: s.soonestRank,
+          confidence: { score: 0.5, label: "medium" },
+          gaps: ["insurance"],
+          evidence: ["A receptionist answered but needs your insurance before booking."],
+        };
+
     return {
       run_id: input.run_id,
       status,
       summary: done
-        ? `Appointment available ${s.day} at ${s.time} with ${s.provider}. They accept Medicaid. Confirmation number ${s.conf}.`
+        ? hasInsurance
+          ? `Booked ${s.day} at ${s.time} with ${s.provider}. They accept Medicaid. Confirmation number ${s.conf}.`
+          : `${s.provider} can see you ${s.day} at ${s.time}, but they need your insurance before booking. Add it and try again.`
         : "Speaking with reception…",
       transcript: done ? script.join("\n") : "",
       activity: script.slice(0, revealed).map((message) => ({ kind: "callee_realtime", message })),
-      details: done
-        ? { appointment: `${s.day} ${s.time}`, provider: s.provider, accepts_insurance: true, confirmation: s.conf, soonest_rank: s.soonestRank }
-        : {},
+      details: done ? doneDetails : {},
       next_step: done ? null : { action: "poll" },
       raw: { run_id: input.run_id, status },
     };
@@ -224,7 +245,17 @@ export class FakeCalleTransport implements CalleTransport {
   }
 }
 
-function fakeScript(s: FakeScenario): string[] {
+function fakeScript(s: FakeScenario, hasInsurance: boolean): string[] {
+  if (!hasInsurance) {
+    return [
+      "Call is ringing…",
+      "Call connected.",
+      "Bot: Hi, I'm an AI assistant calling to book an appointment.",
+      "Rep: Sure — what insurance does the patient have?",
+      "Bot: I don't have that on file yet.",
+      "Rep: We'll need it before we can book. Please call back with it.",
+    ];
+  }
   return [
     "Call is ringing…",
     "Call connected.",
@@ -364,6 +395,21 @@ export class CalleClient {
     const confirmationNumbers = collectConfirmationNumbers(structured, outcome);
     const appointmentText = typeof structured.appointment === "string" ? structured.appointment : undefined;
     const provider = typeof structured.provider === "string" ? structured.provider : undefined;
+    // CALL-E nests these under `outcome`; the fake puts them at the top level.
+    const outcomeObj = (structured.outcome && typeof structured.outcome === "object" ? structured.outcome : {}) as Record<string, unknown>;
+    const conf = (structured.confidence ?? outcomeObj.completion_confidence) as { score?: unknown; label?: unknown } | undefined;
+    const confidence =
+      conf && typeof conf.score === "number" && typeof conf.label === "string"
+        ? { score: conf.score, label: conf.label }
+        : undefined;
+    const evidence = strArrayOf(structured.evidence ?? outcomeObj.evidence);
+    const gaps = strArrayOf(structured.gaps ?? outcomeObj.gaps);
+    const taskCompleted =
+      typeof structured.task_completed === "boolean"
+        ? structured.task_completed
+        : typeof outcomeObj.task_completed === "boolean"
+          ? (outcomeObj.task_completed as boolean)
+          : undefined;
     return {
       status: normalizeStatus(rawStatus),
       rawStatus,
@@ -373,8 +419,18 @@ export class CalleClient {
       transcript: r.transcript ?? "",
       appointmentText,
       provider,
+      confidence,
+      evidence,
+      gaps,
+      taskCompleted,
     };
   }
+}
+
+function strArrayOf(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v.filter((x): x is string => typeof x === "string");
+  return out.length ? out : undefined;
 }
 
 /** Pull confirmation numbers from structured fields, else from the summary text. */

@@ -5,6 +5,7 @@ import SwiftUI
 struct ResultCardView: View {
     let result: CallResult
     var onReplay: () -> Void
+    var onRetry: () -> Void
     var onDone: () -> Void
 
     @State private var showTranscript = false
@@ -26,11 +27,41 @@ struct ResultCardView: View {
                             .font(.title3.weight(.bold))
                             .foregroundStyle(Theme.ink)
                         Spacer()
+                        if let c = result.confidence {
+                            Label(c.label.capitalized, systemImage: "checkmark.seal.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(confidenceColor(c.label))
+                                .padding(.vertical, 5).padding(.horizontal, 10)
+                                .background(Capsule().fill(confidenceColor(c.label).opacity(0.14)))
+                        }
                     }
 
                     Text(result.outcomeUserLang ?? result.outcome)
                         .font(.title3)
                         .foregroundStyle(Theme.ink)
+
+                    if let gaps = result.gaps, !gaps.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("They need a bit more", systemImage: "exclamationmark.bubble.fill")
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
+                            Text("The receptionist asked for: \(gaps.joined(separator: ", ")). Add it in Your details, then try again.")
+                                .font(.footnote).foregroundStyle(Theme.inkSecondary)
+                        }
+                        .padding(Theme.Space.m)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.accent.opacity(0.10)))
+                    }
+
+                    if let evidence = result.evidence, !evidence.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(evidence, id: \.self) { line in
+                                HStack(alignment: .top, spacing: 6) {
+                                    Image(systemName: "checkmark").font(.caption2.weight(.bold)).foregroundStyle(Theme.success).padding(.top, 2)
+                                    Text(line).font(.footnote).foregroundStyle(Theme.inkSecondary)
+                                }
+                            }
+                        }
+                    }
 
                     if !result.confirmationNumbers.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
@@ -88,9 +119,13 @@ struct ResultCardView: View {
                 .padding(Theme.Space.m)
                 .softCard(Theme.surfaceSunk, stroke: .clear)
 
-                Button("New request", action: onDone)
-                    .buttonStyle(PrimaryPill())
-                    .frame(maxWidth: .infinity)
+                HStack(spacing: Theme.Space.s) {
+                    Button { onRetry() } label: {
+                        Label("Try again", systemImage: "arrow.clockwise")
+                    }.buttonStyle(SoftPill())
+                    Button("New request", action: onDone).buttonStyle(PrimaryPill())
+                }
+                .frame(maxWidth: .infinity)
             }
             .padding(.horizontal, Theme.Space.l)
             .padding(.vertical, Theme.Space.m)
@@ -108,6 +143,14 @@ struct ResultCardView: View {
             let title = result.provider.map { "Appointment — \($0)" } ?? "Appointment"
             let outcome = await CalendarService.addEvent(title: title, notes: result.outcome, appointmentText: appt)
             await MainActor.run { calState = (outcome == .added) ? .added : .denied }
+        }
+    }
+
+    private func confidenceColor(_ label: String) -> Color {
+        switch label.lowercased() {
+        case "high": return Theme.success
+        case "medium": return Theme.accent
+        default: return Theme.primaryDeep
         }
     }
 

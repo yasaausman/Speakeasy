@@ -3,6 +3,9 @@ import SwiftUI
 /// The voice-first call flow: speak/type → confirm gate → live call → result.
 struct HomeView: View {
     @ObservedObject var vm: SessionViewModel
+    @State private var noteText = ""
+    @State private var showNumberSheet = false
+    @State private var showNote = false
 
     var body: some View {
         Group {
@@ -16,9 +19,11 @@ struct HomeView: View {
             case .done:
                 if let ranked = vm.ranked {
                     RankedResultsView(ranked: ranked, winnerReason: vm.winnerReason,
-                                      onReplay: vm.speakResult, onDone: vm.reset)
+                                      onReplay: { vm.speakResult() },
+                                      onBook: { vm.bookWinner(number: $0) },
+                                      onDone: vm.reset)
                 } else if let r = vm.result {
-                    ResultCardView(result: r, onReplay: vm.speakResult, onDone: vm.reset)
+                    ResultCardView(result: r, onReplay: { vm.speakResult() }, onRetry: vm.retry, onDone: vm.reset)
                 }
             }
         }
@@ -107,8 +112,40 @@ struct HomeView: View {
                     .multilineTextAlignment(.center)
                     .padding(Theme.Space.l).frame(maxWidth: .infinity)
                     .softCard(Theme.surface)
-                Label(u.targetNumber, systemImage: "phone.fill")
-                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
+
+                if vm.compareMode {
+                    Label(u.targetNumber, systemImage: "phone.fill")
+                        .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
+                } else {
+                    Button { showNumberSheet = true } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "phone.fill")
+                            Text(u.targetNumber)
+                            Image(systemName: "pencil").font(.caption2)
+                        }
+                        .font(.subheadline.weight(.medium)).foregroundStyle(Theme.primary)
+                    }
+                }
+
+                // Editable brief: add a detail before calling.
+                if showNote {
+                    HStack(spacing: Theme.Space.s) {
+                        TextField("e.g. mornings only, take Medicaid", text: $noteText)
+                            .font(.subheadline).foregroundStyle(Theme.ink)
+                            .padding(.vertical, 10).padding(.horizontal, 14)
+                            .background(Capsule().fill(Theme.surface))
+                            .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+                        Button("Add") { vm.amend(noteText); noteText = ""; showNote = false }
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.primary)
+                            .disabled(noteText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                    .padding(.horizontal, Theme.Space.xs)
+                } else {
+                    Button { showNote = true } label: {
+                        Label("Add a detail", systemImage: "plus.circle")
+                            .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
+                    }
+                }
             }
 
             Spacer()
@@ -122,6 +159,12 @@ struct HomeView: View {
         }
         .padding(.horizontal, Theme.Space.l)
         .padding(.bottom, Theme.Space.l)
+        .sheet(isPresented: $showNumberSheet) {
+            ChangeNumberSheet(current: vm.targetNumber ?? "") { number in
+                vm.targetNumber = number
+                vm.submitGoal(vm.lastGoalText)   // re-run with the chosen number
+            }
+        }
     }
 
     // MARK: Live call (with streaming transcript)

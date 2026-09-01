@@ -89,7 +89,7 @@ struct RootView: View {
         case .home:
             HomeView(vm: vm)
         case .savedDetails:
-            SavedDetailsView(details: $store.details)
+            SavedDetailsView(details: $store.details, textForward: $store.textForward)
         case .history:
             HistoryView(store: store) { text, code in
                 vm.speech.speak(text, localeId: AppLanguage.byCode(code).ttsLocale)

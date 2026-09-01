@@ -87,7 +87,11 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
             confirmationNumbers: [],
             transcript: "AGENT: Hi, this is an automated test call. Can you hear me clearly?\nREP: Yes, loud and clear.\nAGENT: Great, thank you. Goodbye.",
             appointmentText: nil,
-            provider: nil
+            provider: nil,
+            confidence: nil,
+            evidence: nil,
+            gaps: nil,
+            taskCompleted: true
         )
     }
 }

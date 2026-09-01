@@ -46,6 +46,11 @@ enum CallOutcomeStatus: String, Codable {
     case completed, failed, no_answer, voicemail, declined, busy, canceled, expired
 }
 
+struct ConfidenceInfo: Codable, Equatable {
+    let score: Double
+    let label: String
+}
+
 struct CallResult: Codable, Equatable {
     let status: CallOutcomeStatus
     let rawStatus: String
@@ -55,6 +60,10 @@ struct CallResult: Codable, Equatable {
     let transcript: String
     let appointmentText: String?
     let provider: String?
+    let confidence: ConfidenceInfo?
+    let evidence: [String]?
+    let gaps: [String]?
+    let taskCompleted: Bool?
 }
 
 // MARK: - One place's result in a multi-call comparison (C1)

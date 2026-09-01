@@ -6,6 +6,7 @@ struct RankedResultsView: View {
     let ranked: [RankedResult]
     let winnerReason: String?
     var onReplay: () -> Void
+    var onBook: (String) -> Void
     var onDone: () -> Void
 
     var body: some View {
@@ -56,10 +57,18 @@ struct RankedResultsView: View {
                     .softCard(Theme.surface)
                 }
 
-                Button("New request", action: onDone)
+                if let winner = ranked.first {
+                    Button { onBook(winner.number) } label: {
+                        Label("Book the best option", systemImage: "phone.arrow.up.right.fill")
+                    }
                     .buttonStyle(PrimaryPill())
                     .frame(maxWidth: .infinity)
                     .padding(.top, Theme.Space.xs)
+                }
+
+                Button("New request", action: onDone)
+                    .buttonStyle(SoftPill())
+                    .frame(maxWidth: .infinity)
             }
             .padding(.horizontal, Theme.Space.l)
             .padding(.vertical, Theme.Space.m)

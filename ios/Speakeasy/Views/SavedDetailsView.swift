@@ -4,6 +4,7 @@ import SwiftUI
 /// (booking, refills) actually complete. Stored locally on device.
 struct SavedDetailsView: View {
     @Binding var details: SavedDetails
+    @Binding var textForward: Bool
 
     var body: some View {
         ScrollView {
@@ -33,6 +34,21 @@ struct SavedDetailsView: View {
                     .foregroundStyle(Theme.success)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.top, Theme.Space.xs)
+
+                // Accessibility
+                VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                    Toggle(isOn: $textForward) {
+                        Label("Text-only mode", systemImage: "ear.trianglebadge.exclamationmark")
+                            .font(.body.weight(.medium)).foregroundStyle(Theme.ink)
+                    }
+                    .tint(Theme.primary)
+                    Text("For Deaf or hard-of-hearing users — no spoken audio; everything stays on screen.")
+                        .font(.footnote).foregroundStyle(Theme.inkSecondary)
+                }
+                .padding(Theme.Space.m)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .softCard(Theme.surface)
+                .padding(.top, Theme.Space.s)
             }
             .padding(.horizontal, Theme.Space.l)
             .padding(.vertical, Theme.Space.m)
