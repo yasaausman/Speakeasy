@@ -197,6 +197,34 @@ export class FakeCalleTransport implements CalleTransport {
     st.count += 1;
     this.runs.set(input.run_id, st);
     const s = scenarioFor(st.number);
+
+    // Discover intent (speculative two-call booking): report available times, book nothing.
+    const isDiscover = /do not book|available for:|what appointment times/i.test(st.userInput);
+    if (isDiscover) {
+      const offered = [`${s.day} at ${s.time}`, "Wednesday at 3:30pm", "Saturday at 11:00am"];
+      const script = [
+        "Call is ringing…",
+        "Call connected.",
+        "Bot: Hi, I'm an AI assistant. What appointment times do you have available?",
+        `Rep: We have ${offered.join(", ")}.`,
+        "Bot: Thank you — I'll check with them and call back to book.",
+      ];
+      const revealed = Math.min(st.count * 2, script.length);
+      const done = st.count >= 3;
+      return {
+        run_id: input.run_id,
+        status: done ? "COMPLETED" : "IN_PROGRESS",
+        summary: done
+          ? `${s.provider} has these times available: ${offered.join(", ")}.`
+          : "Asking about availability…",
+        transcript: done ? script.join("\n") : "",
+        activity: script.slice(0, revealed).map((message) => ({ kind: "callee_realtime", message })),
+        details: done ? { provider: s.provider, available_times: offered, task_completed: true } : {},
+        next_step: done ? null : { action: "poll" },
+        raw: { run_id: input.run_id, status: done ? "COMPLETED" : "IN_PROGRESS" },
+      };
+    }
+
     // Demo of gap-surfacing: if the brief didn't include an insurance fact, the
     // office can't book yet and asks for it. Providing insurance completes it.
     const hasInsurance = /insurance:/i.test(st.userInput);

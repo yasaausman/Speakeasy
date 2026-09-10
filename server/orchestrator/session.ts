@@ -32,10 +32,30 @@ export interface RankedResult {
 
 export type SessionMode = "single" | "multi";
 
+/** How the agent should book: place a real booking, or just find available times. */
+export type CallIntent = "book" | "discover";
+
+/** Front-loaded booking preferences — the agent decides from these instead of
+ *  putting anyone on hold (there is no live hold; CALL-E is one-shot async). */
+export interface CallPreferences {
+  preferredTimes?: string; // "Saturday 2–4pm"
+  fallbackTimes?: string; // "any afternoon, or Sunday morning"
+  avoid?: string; // "not before 10am"
+  budget?: string; // "under $40"
+}
+
+/** An available appointment slot discovered on a "discover" call (C4). */
+export interface SlotOption {
+  id: string;
+  label: string; // "Saturday 3:30pm"
+  labelUserLang?: string; // translated for display
+}
+
 export interface Session {
   id: string;
   phase: SessionPhase;
   mode: SessionMode;
+  intent: CallIntent;
   userLang: LangCode;
   originalText?: string; // the user's goal in their own language
   englishGoal?: string; // translated goal
@@ -43,12 +63,15 @@ export interface Session {
   numbers?: string[]; // destinations (multi mode)
   understanding?: GoalUnderstanding;
   facts?: Record<string, string>; // saved details the agent can share (single mode)
+  preferences?: CallPreferences; // front-loaded booking preferences
+  availability?: string; // the user's free times (from their calendar)
   runId?: string;
   statusLine?: string | null;
   activity?: string[]; // live transcript lines during the call (single mode)
   result?: NarratedResult; // single mode
   ranked?: RankedResult[]; // multi mode, best-first
   winnerReason?: string | null; // multi mode, in the user's language
+  options?: SlotOption[]; // discover mode: available slots to pick from
   errorMessage?: string;
   updatedAt: number;
 }
@@ -58,12 +81,14 @@ export interface SessionStateDTO {
   sessionId: string;
   phase: SessionPhase;
   mode: SessionMode;
+  intent: CallIntent;
   statusLine: string | null;
   activity: string[] | null;
   understanding: GoalUnderstanding | null;
   result: NarratedResult | null;
   ranked: RankedResult[] | null;
   winnerReason: string | null;
+  options: SlotOption[] | null;
   errorMessage: string | null;
 }
 
@@ -72,12 +97,14 @@ export function toDTO(s: Session): SessionStateDTO {
     sessionId: s.id,
     phase: s.phase,
     mode: s.mode,
+    intent: s.intent,
     statusLine: s.statusLine ?? null,
     activity: s.activity ?? null,
     understanding: s.understanding ?? null,
     result: s.result ?? null,
     ranked: s.ranked ?? null,
     winnerReason: s.winnerReason ?? null,
+    options: s.options ?? null,
     errorMessage: s.errorMessage ?? null,
   };
 }
@@ -87,7 +114,7 @@ export class SessionStore {
 
   create(userLang: LangCode): Session {
     const id = `sess_${Math.random().toString(36).slice(2, 10)}`;
-    const session: Session = { id, phase: "collecting", mode: "single", userLang, updatedAt: Date.now() };
+    const session: Session = { id, phase: "collecting", mode: "single", intent: "book", userLang, updatedAt: Date.now() };
     this.sessions.set(id, session);
     return session;
   }

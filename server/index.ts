@@ -14,7 +14,7 @@ import Fastify from "fastify";
 
 import { LANGUAGES, coerceLang } from "./language/languages.js";
 import { Orchestrator } from "./orchestrator/orchestrator.js";
-import { toDTO } from "./orchestrator/session.js";
+import { toDTO, type CallIntent, type CallPreferences } from "./orchestrator/session.js";
 
 const app = Fastify({ logger: true });
 const orchestrator = new Orchestrator();
@@ -44,6 +44,9 @@ app.post("/api/sessions/:id/goal", async (req, reply) => {
     numbers?: string[];
     number?: string;
     facts?: Record<string, string>;
+    preferences?: CallPreferences;
+    availability?: string;
+    intent?: CallIntent;
   };
   if (!body.text?.trim()) {
     return reply.code(400).send({ error: "text is required" });
@@ -51,8 +54,16 @@ app.post("/api/sessions/:id/goal", async (req, reply) => {
   // Accept `numbers` (multi-call) or a single `number`.
   const numbers = Array.isArray(body.numbers) ? body.numbers : body.number ? [body.number] : undefined;
   const facts = body.facts && typeof body.facts === "object" ? body.facts : undefined;
+  const preferences = body.preferences && typeof body.preferences === "object" ? body.preferences : undefined;
+  const intent: CallIntent = body.intent === "discover" ? "discover" : "book";
   try {
-    const understanding = await orchestrator.submitGoal(id, body.text, coerceLang(body.lang), numbers, facts);
+    const understanding = await orchestrator.submitGoal(id, body.text, coerceLang(body.lang), {
+      numbers,
+      facts,
+      preferences,
+      availability: typeof body.availability === "string" ? body.availability : undefined,
+      intent,
+    });
     return understanding;
   } catch (err) {
     return reply.code(404).send({ error: err instanceof Error ? err.message : "unknown session" });
