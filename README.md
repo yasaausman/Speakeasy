@@ -48,6 +48,9 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 
 ## Milestones
 
+> The full, up-to-date checklist of everything built and what's left lives in
+> **[MILESTONES.md](MILESTONES.md)**.
+
 ### ✅ Done
 
 - **M0 · CALL-E proven** — `server/calle/` client (types, OAuth transport, `CalleClient`) drives `plan_call → run_call → poll get_call_run` and normalizes to a `CallResult`. `scripts/smoke-call.ts` runs the full workflow; **dry-run green**. (Real call still pending CALL-E auth.)
