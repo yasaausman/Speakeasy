@@ -110,10 +110,14 @@ struct HomeView: View {
                 .softCard(Theme.surface)
 
                 if let err = vm.errorMessage {
-                    Text(err).font(.footnote).foregroundStyle(Theme.primaryDeep)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    ErrorBanner(message: err) {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                            vm.errorMessage = nil
+                        }
+                    }
                 }
             }
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: vm.errorMessage)
         }
         .padding(.horizontal, Theme.Space.l)
         .padding(.bottom, Theme.Space.m)
@@ -265,3 +269,49 @@ struct HomeView: View {
 // (Removed HoldButtonStyle — a ButtonStyle's isPressed via onChange doesn't
 // reliably fire press/release for push-to-talk. The mic uses a DragGesture in
 // inputView instead.)
+
+/// A soft, non-alarming inline notice for voice/mic trouble. Uses the playful
+/// orange accent rather than a harsh red so a hiccup still feels friendly, and
+/// always points the user at the "type below" fallback. Dismissible; driven by
+/// SessionViewModel.errorMessage.
+struct ErrorBanner: View {
+    let message: String
+    var onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Space.xs) {
+            Image(systemName: "exclamationmark.bubble.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+
+            Text(message)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.inkSecondary)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Theme.surfaceSunk))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Dismiss")
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous)
+                .fill(Theme.accent.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous)
+                .strokeBorder(Theme.accent.opacity(0.35), lineWidth: 1)
+        )
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .accessibilityElement(children: .combine)
+    }
+}

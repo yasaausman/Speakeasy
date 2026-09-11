@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 /// Drives the app's copy of the state machine and talks to the backend via the
 /// SpeakeasyAPI protocol. Swap MockSpeakeasyAPI ⇄ LiveSpeakeasyAPI with no UI change.
@@ -38,6 +39,7 @@ final class SessionViewModel: ObservableObject {
     let store: AppStore
     private var sessionId: String?
     private var pollTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
     var canAcceptInput: Bool { phase == .idle || phase == .collecting || phase == .failed }
 
@@ -45,6 +47,18 @@ final class SessionViewModel: ObservableObject {
     init(store: AppStore, api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
         self.store = store
         self.api = api
+
+        // The speech layer is a nested ObservableObject; SwiftUI won't see its
+        // changes through `vm` on its own. Forward them so the orb and caption
+        // update live, and lift any speech error into the on-screen banner.
+        speech.objectWillChange
+            .sink { [weak self] in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        speech.$lastError
+            .compactMap { $0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] message in self?.errorMessage = message }
+            .store(in: &cancellables)
     }
 
     // MARK: Voice input (press-to-talk)
@@ -58,14 +72,17 @@ final class SessionViewModel: ObservableObject {
     func startVoiceInput() {
         guard canAcceptInput, !speech.isListening, !wantsListening else { return }
         wantsListening = true
+        errorMessage = nil   // clear any stale notice — this is a fresh attempt
         speech.stopSpeaking()
         Task {
             let granted = await self.speech.requestPermissions()
             guard self.wantsListening else { return }   // released before permission resolved
             if granted {
                 self.speech.startListening(localeId: self.language.sttLocale)
+                // If the mic/engine couldn't start, `isListening` stays false and
+                // `speech.lastError` (surfaced to the banner) explains why.
+                if !self.speech.isListening { self.wantsListening = false }
             } else {
-                self.errorMessage = self.speech.lastError
                 self.wantsListening = false
             }
         }

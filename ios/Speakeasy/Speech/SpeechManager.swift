@@ -36,7 +36,7 @@ final class SpeechManager: NSObject, ObservableObject {
             AVAudioApplication.requestRecordPermission { cont.resume(returning: $0) }
         }
         if !(speechOK && micOK) {
-            lastError = "Microphone and speech permission are needed to talk."
+            lastError = "Speakeasy needs microphone and speech access to hear you. Turn it on in Settings, or type your request below."
         }
         return speechOK && micOK
     }
@@ -50,7 +50,7 @@ final class SpeechManager: NSObject, ObservableObject {
 
         let rec = SFSpeechRecognizer(locale: Locale(identifier: localeId))
         guard let rec, rec.isAvailable else {
-            lastError = "Speech recognition isn't available for \(localeId)."
+            lastError = "Voice input isn't available for this language yet — you can type your request below instead."
             return
         }
         recognizer = rec
@@ -64,7 +64,7 @@ final class SpeechManager: NSObject, ObservableObject {
             try session.setCategory(.record, mode: .measurement, options: .duckOthers)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            lastError = "Couldn't start the microphone."
+            lastError = "I couldn't reach the microphone. You can type your request below."
             return
         }
 
@@ -77,7 +77,7 @@ final class SpeechManager: NSObject, ObservableObject {
         do {
             try audioEngine.start()
         } catch {
-            lastError = "Couldn't start audio."
+            lastError = "I couldn't start listening just now. You can type your request below."
             teardownAudio()
             return
         }
@@ -90,7 +90,14 @@ final class SpeechManager: NSObject, ObservableObject {
                 Task { @MainActor in self.partialText = text }
             }
             if error != nil || (result?.isFinal ?? false) {
-                Task { @MainActor in self.teardownAudio() }
+                Task { @MainActor in
+                    // Surface a failure only when it cut us off before any words
+                    // landed — otherwise the partial text is a fine result.
+                    if error != nil, self.isListening, self.partialText.isEmpty {
+                        self.lastError = "I couldn't quite catch that. Hold to try again, or type below."
+                    }
+                    self.teardownAudio()
+                }
             }
         }
     }
