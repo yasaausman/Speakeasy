@@ -44,16 +44,13 @@ struct HomeView: View {
         VStack(spacing: Theme.Space.l) {
             Spacer(minLength: Theme.Space.m)
 
-            Button(action: {}) {
-                VoiceOrb(isListening: vm.speech.isListening)
-            }
-            .buttonStyle(HoldButtonStyle(onHold: { pressing in
-                if pressing {
-                    vm.startVoiceInput()
-                } else {
-                    vm.endVoiceInput()
-                }
-            }))
+            VoiceOrb(isListening: vm.speech.isListening)
+                .contentShape(Circle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in vm.startVoiceInput() }
+                        .onEnded { _ in vm.endVoiceInput() }
+                )
 
             Text(vm.speech.isListening
                  ? (vm.speech.partialText.isEmpty ? "Listening…" : vm.speech.partialText)
@@ -265,14 +262,6 @@ struct HomeView: View {
     private var isEmpty: Bool { vm.draftText.trimmingCharacters(in: .whitespaces).isEmpty }
 }
 
-struct HoldButtonStyle: ButtonStyle {
-    var onHold: (Bool) -> Void
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .onChange(of: configuration.isPressed) { _, pressed in
-                onHold(pressed)
-            }
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-    }
-}
+// (Removed HoldButtonStyle — a ButtonStyle's isPressed via onChange doesn't
+// reliably fire press/release for push-to-talk. The mic uses a DragGesture in
+// inputView instead.)

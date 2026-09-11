@@ -49,21 +49,31 @@ final class SessionViewModel: ObservableObject {
 
     // MARK: Voice input (press-to-talk)
 
+    /// True between finger-down and finger-up on the mic — used so the async
+    /// permission request can't strand us if the user releases early, and so a
+    /// gesture that fires onChanged repeatedly only starts listening once.
+    private var wantsListening = false
+
     /// Begin capturing speech in the user's language. Requests permission first.
     func startVoiceInput() {
-        guard canAcceptInput, !speech.isListening else { return }
+        guard canAcceptInput, !speech.isListening, !wantsListening else { return }
+        wantsListening = true
         speech.stopSpeaking()
         Task {
-            guard await self.speech.requestPermissions() else {
+            let granted = await self.speech.requestPermissions()
+            guard self.wantsListening else { return }   // released before permission resolved
+            if granted {
+                self.speech.startListening(localeId: self.language.sttLocale)
+            } else {
                 self.errorMessage = self.speech.lastError
-                return
+                self.wantsListening = false
             }
-            self.speech.startListening(localeId: self.language.sttLocale)
         }
     }
 
     /// Stop capturing and submit whatever was transcribed.
     func endVoiceInput() {
+        wantsListening = false
         guard speech.isListening else { return }
         let text = speech.stopListening()
         draftText = text
