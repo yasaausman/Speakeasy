@@ -39,26 +39,26 @@ extension Color {
 }
 
 enum Theme {
-    // Grounds & surfaces (cool blue-gray, never beige)
-    static let ground = Color.cool(0xEDF1F7, 0x0E1420)
-    static let surface = Color.cool(0xFCFDFF, 0x18202E)
-    static let surfaceSunk = Color.cool(0xE3EAF3, 0x1E2838)
+    // Grounds & surfaces (Playful & Vibrant)
+    static let ground = Color.cool(0xF4F7F6, 0x1A1C19)       // Very soft mint/gray tint
+    static let surface = Color.cool(0xFFFFFF, 0x2A2D2A)      // Pure white cards
+    static let surfaceSunk = Color.cool(0xE8ECEB, 0x141513)
 
-    // Ink (cool slate)
-    static let ink = Color.cool(0x1B2430, 0xE9EEF6)
-    static let inkSecondary = Color.cool(0x5B6675, 0x94A2B6)
+    // Ink (Friendly, not pure black)
+    static let ink = Color.cool(0x2D3748, 0xF7FAFC)
+    static let inkSecondary = Color.cool(0x718096, 0xA0AEC0)
 
-    // Brand
-    static let primary = Color.cool(0x2F6FE4, 0x5B8DEF)      // blue — the one tint
-    static let primaryDeep = Color.cool(0x2559C0, 0x4A7CE0)
-    static let accent = Color.cool(0x0E97A6, 0x2CC5CE)       // teal — highlights only
-    static let success = Color.cool(0x1E9A66, 0x4FC48A)
+    // Brand - Vibrant, friendly primary colors (like Duolingo's green/blue/orange)
+    static let primary = Color.cool(0x1CB0F6, 0x1CB0F6)      // Friendly Sky Blue
+    static let primaryDeep = Color.cool(0x1899D6, 0x1899D6)
+    static let accent = Color.cool(0xFF9600, 0xFF9600)       // Playful Orange
+    static let success = Color.cool(0x58CC02, 0x58CC02)      // Bouncy Green
 
     // Lines
-    static let hairline = Color.cool(0xDCE4EE, 0x263349)
+    static let hairline = Color.cool(0xE2E8F0, 0x4A5568)
 
-    enum Space { static let xs: CGFloat = 6, s: CGFloat = 12, m: CGFloat = 18, l: CGFloat = 26, xl: CGFloat = 40 }
-    enum Radius { static let card: CGFloat = 24, chip: CGFloat = 14 }
+    enum Space { static let xs: CGFloat = 8, s: CGFloat = 16, m: CGFloat = 24, l: CGFloat = 32, xl: CGFloat = 48 }
+    enum Radius { static let card: CGFloat = 32, chip: CGFloat = 20 }
 }
 
 // MARK: - Soft card

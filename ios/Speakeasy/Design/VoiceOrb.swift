@@ -6,40 +6,72 @@ struct VoiceOrb: View {
     var isListening: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var breathe = false
+    @State private var blink = false
 
-    private var tint: Color { isListening ? Color.cool(0xE0454A, 0xF06A6F) : Theme.primary }
-    private var tintDeep: Color { isListening ? Color.cool(0xC5383D, 0xE0555A) : Theme.primaryDeep }
+    private var tint: Color { isListening ? Theme.accent : Theme.primary }
+    private var tintDeep: Color { isListening ? Theme.accent.opacity(0.8) : Theme.primaryDeep }
 
     var body: some View {
         ZStack {
             Circle()
-                .fill(tint.opacity(0.16))
-                .frame(width: 236, height: 236)
-                .blur(radius: 14)
-                .scaleEffect(breathe && !reduceMotion ? 1.06 : 0.96)
+                .fill(tint.opacity(0.12))
+                .frame(width: 240, height: 240)
+                .scaleEffect(breathe && !reduceMotion ? 1.08 : 0.92)
             Circle()
-                .fill(tint.opacity(0.24))
-                .frame(width: 176, height: 176)
-                .blur(radius: 6)
+                .fill(tint.opacity(0.20))
+                .frame(width: 180, height: 180)
+                .scaleEffect(breathe && !reduceMotion ? 1.04 : 0.96)
 
             Circle()
-                .fill(
-                    LinearGradient(colors: [tint, tintDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .frame(width: 136, height: 136)
+                .fill(tint) // Solid playful color
+                .frame(width: 140, height: 140)
+                .shadow(color: tintDeep, radius: 0, x: 0, y: 8) // Hard shadow for 3D button effect
                 .overlay(
-                    Circle().strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                    Circle().strokeBorder(Color.white.opacity(0.3), lineWidth: 4)
                 )
-                .shadow(color: tint.opacity(0.5), radius: 26, x: 0, y: 12)
 
-            Image(systemName: isListening ? "waveform" : "mic.fill")
-                .font(.system(size: 46, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-                .symbolEffect(.variableColor.iterative, isActive: isListening)
+            // Mascot Face!
+            VStack(spacing: 10) {
+                HStack(spacing: 24) {
+                    // Left eye
+                    Capsule()
+                        .fill(.white)
+                        .frame(width: 16, height: isListening ? 26 : 20)
+                        .scaleEffect(y: blink ? 0.1 : 1.0, anchor: .center)
+                    // Right eye
+                    Capsule()
+                        .fill(.white)
+                        .frame(width: 16, height: isListening ? 26 : 20)
+                        .scaleEffect(y: blink ? 0.1 : 1.0, anchor: .center)
+                }
+                .padding(.top, isListening ? 0 : 4)
+
+                // Mouth
+                if isListening {
+                    Circle()
+                        .trim(from: 0.0, to: 0.5)
+                        .stroke(style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .fill(.white)
+                        .frame(width: 24, height: 24)
+                        .rotationEffect(.degrees(180)) // Open mouth smile
+                } else {
+                    Capsule()
+                        .fill(.white)
+                        .frame(width: 32, height: 6)
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isListening)
+            .animation(.interactiveSpring(response: 0.15), value: blink)
         }
-        .scaleEffect(breathe && !reduceMotion ? 1.03 : 1.0)
+        .onReceive(Timer.publish(every: 4.2, on: .main, in: .common).autoconnect()) { _ in
+            if !isListening {
+                blink = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { blink = false }
+            }
+        }
+        .scaleEffect(breathe && !reduceMotion ? 1.02 : 1.0)
         .animation(
-            reduceMotion ? nil : .easeInOut(duration: 2.6).repeatForever(autoreverses: true),
+            reduceMotion ? nil : .spring(response: 1.2, dampingFraction: 0.5, blendDuration: 1.0).repeatForever(autoreverses: true),
             value: breathe
         )
         .onAppear { breathe = true }

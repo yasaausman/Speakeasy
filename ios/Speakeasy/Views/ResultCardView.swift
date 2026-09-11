@@ -17,8 +17,9 @@ struct ResultCardView: View {
     private enum CalState { case idle, added, denied }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.l) {
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Space.l) {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     HStack(spacing: Theme.Space.s) {
                         ZStack {
@@ -150,6 +151,11 @@ struct ResultCardView: View {
             .padding(.vertical, Theme.Space.m)
         }
         .onAppear { autoAddIfNeeded() }
+
+        if result.status == .completed {
+            ConfettiView()
+        }
+        }
     }
 
     /// Auto-create the calendar event on a successful booking (if enabled).
