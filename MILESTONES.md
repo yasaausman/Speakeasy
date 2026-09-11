@@ -25,7 +25,9 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
   simulator against the fake transport (zero calls).
 - [x] **A3 — First real call.** A real CALL-E call completed end-to-end
   (`COMPLETED`, real transcript). Fixed two integration bugs on the way (auth token
-  reuse; nested `result{}` extraction). Redacted proof: `docs/sample-run.json`.
+  reuse; nested `result{}` extraction). The committed `docs/sample-run.json` is a
+  **synthetic** stand-in (reserved fictional data) showing the result shape — no
+  real call data is committed; reproduce a real run with `npm run smoke:real`.
 - [x] **A4 — Live translation.** Gemini wired (`gemini-flash-latest`), auto-selected
   Gemini > OpenAI > passthrough; `.env` auto-loaded. Verified both directions.
 
@@ -50,9 +52,29 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 
 ## Design
 
-- [x] **Visual world (warm) built**, then **redesigned to calm-blue** per your
-  preference (cool blue-gray grounds, one blue tint, teal accent, SF Rounded,
-  breathing voice orb). Light + dark verified. Documented in `ios/DESIGN.md`.
+- [x] **Visual world (warm) built**, then **redesigned to calm-blue**, then evolved
+  to a **playful & vibrant** look — friendly sky-blue primary, a bouncy **mascot
+  face** on the voice orb (eyes + expressive mouth), and a **confetti burst** on a
+  successful booking (`ConfettiView`). Light + dark verified. Documented in
+  `ios/DESIGN.md`.
+
+## Native device bring-up & voice UX
+
+- [x] **Runs on a physical iPhone.** Signed with a free Personal Team (local dev
+  bundle id `com.yasaausman.speakeasy`), installed and launched on-device; **real
+  on-device speech-to-text verified** (Hindi and Spanish transcribed live under the
+  orb) — something the simulator can't do (no sustainable mic).
+- [x] **Push-to-speak fixed.** A teammate's `HoldButtonStyle` didn't fire
+  press/release; replaced with a `DragGesture(minimumDistance: 0)` plus a
+  `wantsListening` guard so hold-to-talk works reliably.
+- [x] **Friendly error banner.** Speech/mic failures were silent; now a soft,
+  dismissible amber banner explains them and points to the type-below fallback
+  (`ErrorBanner`), with `SpeechManager` changes forwarded through the view model so
+  the live orb/caption and errors refresh reliably.
+- [x] **Expressive voice orb.** Green while listening, amber when it can't hear,
+  blue idle; smiling open mouth while listening (was an upside-down frown).
+- [x] **Easy keyboard dismissal.** Tap any empty area, swipe down, a Done button
+  above the keyboard, or grab the orb.
 
 ## Navigation & core features
 
@@ -92,7 +114,8 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
   every push (green).
 - [x] **One-command, zero-infra proof** — `npm test` and `npm run smoke:fake` need no
   Mac, keys, or real calls.
-- [x] **Committed real sample run** — `docs/sample-run.json`.
+- [x] **Committed sample run** — `docs/sample-run.json` (**synthetic**, reserved
+  fictional data showing the normalized result shape; not a real transcript).
 - [x] **MIT license + CI badge + Verify section** in the README.
 
 ## Sponsor engagement & submission
@@ -107,6 +130,12 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 
 ## Still to do
 
+- [ ] **Reach the backend from the phone.** The app still points at
+  `http://localhost:3000`, so on-device the call flow shows "Could not connect to
+  the server" (on-device STT already works offline). Needs `baseURL` → the Mac's LAN
+  IP (e.g. `http://10.0.0.91:3000`) + an ATS exception for the plain-`http` LAN call.
+  Backend already binds `0.0.0.0:3000`, so no server change is needed — just run
+  `npm run dev` on the Mac with both on the same Wi-Fi.
 - [ ] **Record the ~3-minute demo video** (problem → payoff arc). *Time-sensitive.*
 - [ ] **Submit the Devpost form** (paste the submission PR link). *Time-sensitive.*
 - [ ] **Pick one headline beat** for the video/README pitch (speak in Spanish → real
@@ -114,7 +143,7 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 
 ## Later / optional (deferred by choice)
 
-- [ ] **UI interactivity pass** — audio-reactive orb, animated transcript, haptics,
-  smoother transitions (app is currently functional but static).
+- [ ] **UI interactivity pass** — audio-reactive orb (react to mic amplitude),
+  animated transcript, haptics, smoother transitions. (The orb now breathes, colors
+  by state, and has a mascot face + confetti, but isn't yet audio-reactive.)
 - [ ] **#6 real-time live push** (see Smart booking loop).
-- [ ] **Rename the app** — under consideration (currently "Speakeasy").
