@@ -53,7 +53,7 @@ OAuth client can be authorized for the call tools.
 }
 ```
 
-(A full redacted example is committed at
+(A synthetic example with this shape, using reserved fictional data, is committed at
 [`docs/sample-run.json`](./sample-run.json).)
 
 **Suggested fix:** document the `result` envelope (`result.summary`,

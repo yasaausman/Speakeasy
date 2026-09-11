@@ -102,10 +102,11 @@ npm run smoke:fake  # full plan → run → poll → normalized result
 `npm test` asserts the four headline flows — **booking, gap→complete, multi-call
 ranking, and speculative discover→slots** — plus preferences composing into the
 brief. The same commands run in [CI](.github/workflows/ci.yml) on every push.
-A **real** completed CALL-E call (redacted) is committed as proof at
-[`docs/sample-run.json`](docs/sample-run.json), and two reproducible integration
-issues we reported upstream are written up in
+A **synthetic** sample result (reserved fictional data) showing the shape of a
+completed run is at [`docs/sample-run.json`](docs/sample-run.json), and two
+reproducible integration issues we reported upstream are written up in
 [`docs/CALLE-INTEGRATION-FEEDBACK.md`](docs/CALLE-INTEGRATION-FEEDBACK.md).
+(No real call transcripts or identifiers are committed to this repository.)
 
 ## Run it (app + backend, no calls)
 

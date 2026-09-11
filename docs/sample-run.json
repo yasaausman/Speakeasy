@@ -1,0 +1,43 @@
+{
+  "_comment": "SYNTHETIC sample only — reserved fictional data, NOT a real call. It shows the SHAPE of a normalized get_call_run result Speakeasy consumes. Identifiers, times, transcript, and the +1-555-01xx number are all fictional (555-0100..555-0199 is the reserved range for fictional use). To produce your own real run, authenticate the calle CLI and use `SMOKE_TARGET_NUMBER=+1... npm run smoke:real`.",
+  "run_id": "run_synthetic_00000000",
+  "status": "COMPLETED",
+  "message": "Call ended from realtime events.",
+  "display_goal": "Call the clinic and book a dentist appointment; confirm they accept the patient's insurance and capture a confirmation number.",
+  "result": {
+    "summary": "Booked a dentist appointment for Tuesday at 9:40am with Dr. Lee. They accept Medicaid. Confirmation number 4471.",
+    "outcome": {
+      "task_completed": true,
+      "completion_confidence": { "score": 0.9, "label": "high" },
+      "evidence": [
+        "A live receptionist answered and confirmed availability.",
+        "They offered Tuesday at 9:40am with Dr. Lee.",
+        "The booking was confirmed with number 4471."
+      ]
+    },
+    "extracted": {
+      "region": "US",
+      "language": "English",
+      "to_phones": ["+15555550123"],
+      "calling": {
+        "status": "finished",
+        "callee_count": 1,
+        "duration_seconds": 24,
+        "calls": [
+          {
+            "status": "COMPLETED",
+            "hangup_type": "ByRobot",
+            "duration_seconds": 24,
+            "call_start_time": "2025-01-01 09:00:00",
+            "call_end_time": "2025-01-01 09:00:24"
+          }
+        ]
+      }
+    },
+    "transcript": "[00:00:00] BOT: Hi, I'm an AI assistant calling on behalf of a patient to book an appointment.\n[00:00:04] REP: Sure — what insurance does the patient have?\n[00:00:07] BOT: The patient has Medicaid.\n[00:00:10] REP: Great, we accept that. We can do Tuesday at 9:40am with Dr. Lee.\n[00:00:14] BOT: That works — please book it.\n[00:00:17] REP: Booked. Your confirmation number is 4471.\n[00:00:20] BOT: Thank you, goodbye."
+  },
+  "next_step": {
+    "action": "report_result",
+    "instruction": "Report the final call result to the user. Do not start another call."
+  }
+}
