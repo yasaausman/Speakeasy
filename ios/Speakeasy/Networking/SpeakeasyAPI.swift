@@ -112,8 +112,15 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
 
 // MARK: - Live (Phase M1+: talks to the Node backend)
 struct LiveSpeakeasyAPI: SpeakeasyAPI {
-    /// Simulator reaches the Mac's localhost directly. Override for a device/tunnel.
+#if targetEnvironment(simulator)
+    /// The simulator shares the Mac's network, so localhost is the backend.
     var baseURL: URL = URL(string: "http://localhost:3000")!
+#else
+    /// On a physical device "localhost" is the phone itself, so point at the Mac's
+    /// LAN IP (same Wi-Fi). Update this if your Mac's address changes —
+    /// System Settings → Wi-Fi → Details, or `ipconfig getifaddr en0`.
+    var baseURL: URL = URL(string: "http://10.0.0.91:3000")!
+#endif
 
     func createSession(lang: String) async throws -> String {
         struct Body: Codable { let lang: String }
