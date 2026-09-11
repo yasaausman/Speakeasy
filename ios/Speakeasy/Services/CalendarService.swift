@@ -6,7 +6,13 @@ import EventKit
 enum CalendarService {
     enum Result { case added, denied, failed }
 
-    static func addEvent(title: String, notes: String, appointmentText: String) async -> Result {
+    static func addEvent(
+        title: String,
+        notes: String,
+        appointmentText: String,
+        location: String? = nil,
+        phoneToReschedule: String? = nil
+    ) async -> Result {
         let store = EKEventStore()
         let granted: Bool
         do {
@@ -18,10 +24,24 @@ enum CalendarService {
 
         let event = EKEvent(eventStore: store)
         event.title = title
-        event.notes = notes
+        // Enrich notes with a tap-to-call reschedule number.
+        var fullNotes = notes
+        if let phone = phoneToReschedule, !phone.isEmpty {
+            fullNotes += "\n\nTo change or cancel, call \(phone)."
+        }
+        fullNotes += "\n\nBooked with Speakeasy."
+        event.notes = fullNotes
+        if let location, !location.isEmpty { event.location = location }
+        // tel: URL makes the event's link tap-to-call.
+        if let phone = phoneToReschedule?.filter({ $0.isNumber || $0 == "+" }), !phone.isEmpty {
+            event.url = URL(string: "tel:\(phone)")
+        }
         let start = parseDate(appointmentText) ?? Calendar.current.date(byAdding: .day, value: 1, to: Date())!
         event.startDate = start
         event.endDate = start.addingTimeInterval(3600)
+        // Reminders: a day before and an hour before.
+        event.addAlarm(EKAlarm(relativeOffset: -86_400))
+        event.addAlarm(EKAlarm(relativeOffset: -3_600))
         event.calendar = store.defaultCalendarForNewEvents
         do {
             try store.save(event, span: .thisEvent)

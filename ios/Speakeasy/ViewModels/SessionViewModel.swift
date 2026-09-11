@@ -11,6 +11,7 @@ final class SessionViewModel: ObservableObject {
     @Published var result: CallResult?
     @Published var ranked: [RankedResult]?      // multi-call comparison (C1)
     @Published var winnerReason: String?
+    @Published var options: [SlotOption]?       // speculative discover: pick a slot (C4)
     @Published var activity: [String] = []      // live call transcript feed
     @Published var errorMessage: String?
     @Published var draftText: String = ""
@@ -18,6 +19,9 @@ final class SessionViewModel: ObservableObject {
     /// Multi-call comparison mode. Sends a preset set of demo numbers.
     @Published var compareMode: Bool = false
     let compareNumbers = ["+13120001111", "+13120002222", "+13120003333"]
+
+    /// Speculative booking: call 1 asks what's available, you pick, call 2 books.
+    @Published var discoverMode: Bool = false
 
     /// Specific number to call (from the confirm screen / Contacts). nil = default.
     @Published var targetNumber: String?
@@ -31,7 +35,7 @@ final class SessionViewModel: ObservableObject {
     let speech = SpeechManager()
 
     private let api: SpeakeasyAPI
-    private let store: AppStore
+    let store: AppStore
     private var sessionId: String?
     private var pollTask: Task<Void, Never>?
 
@@ -72,19 +76,45 @@ final class SessionViewModel: ObservableObject {
     func submitGoal(_ text: String) {
         let goal = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !goal.isEmpty else { return }
-        lastGoalText = goal
+        // Discover only applies to a single place; comparison always books.
+        let intent = (!compareMode && discoverMode) ? "discover" : "book"
+        launch(goal: goal, intent: intent)
+    }
+
+    /// Compose the full request (facts + preferences + calendar availability) and run.
+    private func launch(goal: String, intent: String) {
+        lastGoalText = goal   // single source of truth — retry/amend build on this
         let numbers: [String]? = compareMode ? compareNumbers : (targetNumber.map { [$0] })
-        let facts = compareMode ? nil : store.details.asFacts   // share saved details on single calls
+        let facts = compareMode ? nil : store.details.asFacts        // share saved details on single calls
+        let prefs = compareMode ? nil : store.details.asPreferences  // front-loaded preferences
+        let wantAvailability = !compareMode && store.useCalendarAvailability
         run {
             self.phase = .collecting
             self.activity = []
-            self.result = nil; self.ranked = nil; self.winnerReason = nil
+            self.result = nil; self.ranked = nil; self.winnerReason = nil; self.options = nil
+            let availability = wantAvailability ? await AvailabilityService.summary() : nil
             let sid = try await self.ensureSession()
-            let u = try await self.api.submitGoal(sessionId: sid, text: goal, lang: self.language.code, numbers: numbers, facts: facts?.isEmpty == true ? nil : facts)
+            let req = GoalRequest(
+                text: goal, lang: self.language.code,
+                numbers: numbers,
+                facts: (facts?.isEmpty ?? true) ? nil : facts,
+                preferences: prefs, availability: availability, intent: intent)
+            let u = try await self.api.submitGoal(sessionId: sid, req)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
             self.narrate(u.readbackUserLang)   // read the goal back (unless text-forward)
         }
+    }
+
+    /// Discover result: user picked an available slot → place call 2 to book it.
+    func pickSlot(_ option: SlotOption) {
+        let base = lastGoalText.isEmpty ? "Book an appointment" : lastGoalText
+        let goal = "\(base). Book the \(option.label) appointment specifically."
+        let number = targetNumber
+        reset()
+        targetNumber = number
+        discoverMode = false
+        launch(goal: goal, intent: "book")
     }
 
     /// Refine the request before calling (editable brief) — re-runs with the note.
@@ -92,6 +122,21 @@ final class SessionViewModel: ObservableObject {
         let n = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !n.isEmpty, !lastGoalText.isEmpty else { return }
         submitGoal("\(lastGoalText). Also: \(n)")
+    }
+
+    /// Defer + call back (#5): the rep needed info we didn't have. Save the answer
+    /// to the vault (so it's shared next time) and call back.
+    func answerGap(_ label: String, value: String) {
+        let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !v.isEmpty else { return }
+        let l = label.lowercased()
+        if l.contains("insurance") { store.details.insurance = v }
+        else if l.contains("birth") || l.contains("dob") { store.details.dateOfBirth = v }
+        else if l.contains("address") { store.details.address = v }
+        else if l.contains("name") { store.details.fullName = v }
+        else if l.contains("callback") || l.contains("phone") || l.contains("number") { store.details.callbackNumber = v }
+        else if !lastGoalText.isEmpty { lastGoalText = "\(lastGoalText). \(label): \(v)" }
+        retry()
     }
 
     /// Re-run the same request (after no-answer, a gap, or a failure).
@@ -160,6 +205,7 @@ final class SessionViewModel: ObservableObject {
         result = nil
         ranked = nil
         winnerReason = nil
+        options = nil
         errorMessage = nil
         draftText = ""
         targetNumber = nil
@@ -189,6 +235,7 @@ final class SessionViewModel: ObservableObject {
                         if let r = s.result { self.result = r }
                         if let rk = s.ranked { self.ranked = rk }
                         if let w = s.winnerReason { self.winnerReason = w }
+                        if let o = s.options { self.options = o }
                         if let e = s.errorMessage { self.errorMessage = e }
                     }
                     if s.phase == .done || s.phase == .failed { break }
@@ -212,6 +259,8 @@ final class SessionViewModel: ObservableObject {
     }
 
     private func saveToHistory() {
+        // Discovery calls are an intermediate step — don't log them as a booking.
+        if let options, !options.isEmpty { return }
         let goalText = understanding?.understoodGoalEnglish ?? draftText
         if let ranked, let winner = ranked.first {
             store.addCall(StoredCall(

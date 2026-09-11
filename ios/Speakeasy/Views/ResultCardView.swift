@@ -4,12 +4,16 @@ import SwiftUI
 /// and a collapsible English transcript.
 struct ResultCardView: View {
     let result: CallResult
+    @ObservedObject var store: AppStore
+    var phoneNumber: String?
     var onReplay: () -> Void
     var onRetry: () -> Void
+    var onAnswerGap: (String, String) -> Void
     var onDone: () -> Void
 
     @State private var showTranscript = false
     @State private var calState: CalState = .idle
+    @State private var gapAnswer = ""
     private enum CalState { case idle, added, denied }
 
     var body: some View {
@@ -40,12 +44,27 @@ struct ResultCardView: View {
                         .font(.title3)
                         .foregroundStyle(Theme.ink)
 
-                    if let gaps = result.gaps, !gaps.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
+                    if let gaps = result.gaps, let firstGap = gaps.first {
+                        VStack(alignment: .leading, spacing: 8) {
                             Label("They need a bit more", systemImage: "exclamationmark.bubble.fill")
                                 .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent)
-                            Text("The receptionist asked for: \(gaps.joined(separator: ", ")). Add it in Your details, then try again.")
+                            Text("The receptionist asked for: \(gaps.joined(separator: ", ")). Add it and I'll call back.")
                                 .font(.footnote).foregroundStyle(Theme.inkSecondary)
+                            HStack(spacing: Theme.Space.s) {
+                                TextField("Your \(firstGap)", text: $gapAnswer)
+                                    .font(.subheadline).foregroundStyle(Theme.ink)
+                                    .padding(.vertical, 10).padding(.horizontal, 14)
+                                    .background(Capsule().fill(Theme.surface))
+                                    .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+                                    .autocorrectionDisabled()
+                                Button {
+                                    onAnswerGap(firstGap, gapAnswer); gapAnswer = ""
+                                } label: {
+                                    Image(systemName: "arrow.up.circle.fill").font(.title2)
+                                        .foregroundStyle(gapAnswer.trimmingCharacters(in: .whitespaces).isEmpty ? Theme.inkSecondary.opacity(0.5) : Theme.accent)
+                                }
+                                .disabled(gapAnswer.trimmingCharacters(in: .whitespaces).isEmpty)
+                            }
                         }
                         .padding(Theme.Space.m)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -130,6 +149,14 @@ struct ResultCardView: View {
             .padding(.horizontal, Theme.Space.l)
             .padding(.vertical, Theme.Space.m)
         }
+        .onAppear { autoAddIfNeeded() }
+    }
+
+    /// Auto-create the calendar event on a successful booking (if enabled).
+    private func autoAddIfNeeded() {
+        guard store.autoAddToCalendar, calState == .idle,
+              result.status == .completed, let appt = result.appointmentText else { return }
+        addToCalendar(appt)
     }
 
     private var calLabel: String {
@@ -141,7 +168,12 @@ struct ResultCardView: View {
     private func addToCalendar(_ appt: String) {
         Task {
             let title = result.provider.map { "Appointment — \($0)" } ?? "Appointment"
-            let outcome = await CalendarService.addEvent(title: title, notes: result.outcome, appointmentText: appt)
+            let outcome = await CalendarService.addEvent(
+                title: title,
+                notes: result.outcome,
+                appointmentText: appt,
+                location: result.provider,
+                phoneToReschedule: phoneNumber)
             await MainActor.run { calState = (outcome == .added) ? .added : .denied }
         }
     }

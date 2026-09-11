@@ -73,18 +73,41 @@ struct RankedResult: Codable, Equatable, Identifiable {
     var id: String { number }
 }
 
+// MARK: - An available appointment slot from a "discover" call (C4)
+struct SlotOption: Codable, Equatable, Identifiable {
+    let id: String
+    let label: String
+    let labelUserLang: String?
+    var display: String { labelUserLang ?? label }
+}
+
 // MARK: - The polled session state from the backend
 struct SessionState: Codable, Equatable {
     let sessionId: String
     let phase: SessionPhase
     let mode: String?
+    let intent: String?              // "book" | "discover"
     let statusLine: String?
     let activity: [String]?          // live transcript lines during the call
     let understanding: GoalUnderstanding?
     let result: CallResult?          // single mode
     let ranked: [RankedResult]?      // multi mode, best-first
     let winnerReason: String?
+    let options: [SlotOption]?       // discover mode: pick a slot to book
     let errorMessage: String?
+}
+
+// MARK: - Front-loaded booking preferences (sent with the goal)
+struct CallPreferences: Codable, Equatable {
+    var preferredTimes: String?
+    var fallbackTimes: String?
+    var avoid: String?
+    var budget: String?
+
+    var isEmpty: Bool {
+        [preferredTimes, fallbackTimes, avoid, budget]
+            .allSatisfy { ($0 ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+    }
 }
 
 // MARK: - Saved details (facts vault) the agent can share on calls
@@ -94,6 +117,12 @@ struct SavedDetails: Codable, Equatable {
     var insurance = ""
     var dateOfBirth = ""
     var address = ""
+
+    // Front-loaded booking preferences (so the agent decides without a hold).
+    var preferredTimes = ""
+    var fallbackTimes = ""
+    var avoid = ""
+    var budget = ""
 
     /// Non-empty fields as a facts dictionary for the call brief.
     var asFacts: [String: String] {
@@ -108,6 +137,17 @@ struct SavedDetails: Codable, Equatable {
         put("date of birth", dateOfBirth)
         put("address", address)
         return f
+    }
+
+    /// Booking preferences for the call brief (nil if none set).
+    var asPreferences: CallPreferences? {
+        func t(_ v: String) -> String? {
+            let s = v.trimmingCharacters(in: .whitespacesAndNewlines)
+            return s.isEmpty ? nil : s
+        }
+        let p = CallPreferences(preferredTimes: t(preferredTimes), fallbackTimes: t(fallbackTimes),
+                                avoid: t(avoid), budget: t(budget))
+        return p.isEmpty ? nil : p
     }
 
     var filledCount: Int { asFacts.count }

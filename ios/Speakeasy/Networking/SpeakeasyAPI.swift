@@ -7,9 +7,20 @@ import Foundation
 ///   - MockSpeakeasyAPI: canned data, no network. Lets the app run in the
 ///     simulator today, before the backend or Xcode auth exists.
 ///   - LiveSpeakeasyAPI: real HTTP calls to the Node backend (Phase M1+).
+/// Everything sent with a goal (grows over time — bundled to keep call sites clean).
+struct GoalRequest: Encodable {
+    let text: String
+    let lang: String
+    var numbers: [String]? = nil
+    var facts: [String: String]? = nil
+    var preferences: CallPreferences? = nil
+    var availability: String? = nil
+    var intent: String? = nil       // "book" | "discover"
+}
+
 protocol SpeakeasyAPI {
     func createSession(lang: String) async throws -> String
-    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?, facts: [String: String]?) async throws -> GoalUnderstanding
+    func submitGoal(sessionId: String, _ req: GoalRequest) async throws -> GoalUnderstanding
     func confirm(sessionId: String) async throws
     func fetchSession(sessionId: String) async throws -> SessionState
 }
@@ -25,8 +36,9 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
         return "mock-session-1"
     }
 
-    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?, facts: [String: String]?) async throws -> GoalUnderstanding {
+    func submitGoal(sessionId: String, _ req: GoalRequest) async throws -> GoalUnderstanding {
         try await Task.sleep(nanoseconds: 500_000_000)
+        let lang = req.lang
         let u = GoalUnderstanding(
             understoodGoalEnglish: "Test call: greet the person and confirm they can hear the call clearly.",
             readbackUserLang: lang.hasPrefix("es")
@@ -68,12 +80,14 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
             sessionId: "mock-session-1",
             phase: phase,
             mode: "single",
+            intent: "book",
             statusLine: status,
             activity: nil,
             understanding: understanding,
             result: result,
             ranked: nil,
             winnerReason: nil,
+            options: nil,
             errorMessage: nil
         )
     }
@@ -108,9 +122,8 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
         return r.sessionId
     }
 
-    func submitGoal(sessionId: String, text: String, lang: String, numbers: [String]?, facts: [String: String]?) async throws -> GoalUnderstanding {
-        struct Body: Codable { let text: String; let lang: String; let numbers: [String]?; let facts: [String: String]? }
-        return try await post("/api/sessions/\(sessionId)/goal", body: Body(text: text, lang: lang, numbers: numbers, facts: facts))
+    func submitGoal(sessionId: String, _ req: GoalRequest) async throws -> GoalUnderstanding {
+        return try await post("/api/sessions/\(sessionId)/goal", body: req)
     }
 
     func confirm(sessionId: String) async throws {

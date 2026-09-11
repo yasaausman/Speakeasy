@@ -17,13 +17,21 @@ struct HomeView: View {
             case .calling, .polling, .narrating:
                 callingView
             case .done:
-                if let ranked = vm.ranked {
+                if let options = vm.options, !options.isEmpty {
+                    SlotPickerView(options: options,
+                                   intro: vm.result?.outcomeUserLang ?? vm.result?.outcome,
+                                   onPick: { vm.pickSlot($0) },
+                                   onDone: vm.reset)
+                } else if let ranked = vm.ranked {
                     RankedResultsView(ranked: ranked, winnerReason: vm.winnerReason,
                                       onReplay: { vm.speakResult() },
                                       onBook: { vm.bookWinner(number: $0) },
                                       onDone: vm.reset)
                 } else if let r = vm.result {
-                    ResultCardView(result: r, onReplay: { vm.speakResult() }, onRetry: vm.retry, onDone: vm.reset)
+                    ResultCardView(result: r, store: vm.store,
+                                   phoneNumber: vm.understanding?.targetNumber,
+                                   onReplay: { vm.speakResult() }, onRetry: vm.retry,
+                                   onAnswerGap: { vm.answerGap($0, value: $1) }, onDone: vm.reset)
                 }
             }
         }
@@ -77,13 +85,28 @@ struct HomeView: View {
                     .animation(.easeInOut, value: isEmpty)
                 }
 
-                Toggle(isOn: $vm.compareMode) {
-                    Label("Compare 3 places, pick the best", systemImage: "trophy")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Theme.ink)
+                VStack(spacing: 0) {
+                    Toggle(isOn: $vm.compareMode) {
+                        Label("Compare 3 places, pick the best", systemImage: "trophy")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.ink)
+                    }
+                    .tint(Theme.primary)
+                    .padding(.vertical, 12).padding(.horizontal, 18)
+                    .onChange(of: vm.compareMode) { _, on in if on { vm.discoverMode = false } }
+
+                    Rectangle().fill(Theme.hairline).frame(height: 1).padding(.leading, 18)
+
+                    Toggle(isOn: $vm.discoverMode) {
+                        Label("Check availability first, then pick", systemImage: "clock.badge.checkmark")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(vm.compareMode ? Theme.inkSecondary : Theme.ink)
+                    }
+                    .tint(Theme.primary)
+                    .disabled(vm.compareMode)
+                    .padding(.vertical, 12).padding(.horizontal, 18)
+                    .onChange(of: vm.discoverMode) { _, on in if on { vm.compareMode = false } }
                 }
-                .tint(Theme.primary)
-                .padding(.vertical, 12).padding(.horizontal, 18)
                 .softCard(Theme.surface)
 
                 if let err = vm.errorMessage {
