@@ -1,5 +1,7 @@
 # Speakeasy
 
+[![CI](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml/badge.svg)](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml)
+
 **Speak or type what you need, in your language. Speakeasy makes the English phone calls, finishes the task, and tells you out loud — and in text — what happened, in your language.**
 
 Built for the [CALL-E "Your Code Is Calling"](https://devpost.com) hackathon. CALL-E places and holds the live English phone call; Speakeasy is the language bridge and the app around it — a **native iOS app** backed by a small Node service.
@@ -82,6 +84,25 @@ server/
 scripts/
   smoke-call.ts       CALL-E end-to-end smoke test (fake by default, --real to call)
 ```
+
+## Verify it works (one command, zero infrastructure)
+
+No Mac, Xcode, API keys, or real calls needed — the CALL-E layer runs on a fake
+transport and the language layer runs offline. On any machine with Node:
+
+```bash
+npm install
+npm test            # 5 deterministic end-to-end flow tests (<1s)
+npm run smoke:fake  # full plan → run → poll → normalized result
+```
+
+`npm test` asserts the four headline flows — **booking, gap→complete, multi-call
+ranking, and speculative discover→slots** — plus preferences composing into the
+brief. The same commands run in [CI](.github/workflows/ci.yml) on every push.
+A **real** completed CALL-E call (redacted) is committed as proof at
+[`docs/sample-run.json`](docs/sample-run.json), and two reproducible integration
+issues we reported upstream are written up in
+[`docs/CALLE-INTEGRATION-FEEDBACK.md`](docs/CALLE-INTEGRATION-FEEDBACK.md).
 
 ## Run it (app + backend, no calls)
 
