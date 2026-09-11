@@ -130,12 +130,12 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 
 ## Still to do
 
-- [ ] **Reach the backend from the phone.** The app still points at
-  `http://localhost:3000`, so on-device the call flow shows "Could not connect to
-  the server" (on-device STT already works offline). Needs `baseURL` → the Mac's LAN
-  IP (e.g. `http://10.0.0.91:3000`) + an ATS exception for the plain-`http` LAN call.
-  Backend already binds `0.0.0.0:3000`, so no server change is needed — just run
-  `npm run dev` on the Mac with both on the same Wi-Fi.
+- [x] **Reach the backend from the phone — wired.** On-device `baseURL` now points
+  at the Mac's LAN IP (`http://10.0.0.91:3000`; simulator still uses localhost), with
+  `NSAllowsLocalNetworking` + `NSLocalNetworkUsageDescription` in a generated
+  `Info.plist`. To run the full flow: `npm run dev` on the Mac, ⌘R on the phone (same
+  Wi-Fi), and **Allow** the one-time "find devices on your local network" prompt.
+  *(IP is per-network — update `SpeakeasyAPI.swift` if the Mac's address changes.)*
 - [ ] **Record the ~3-minute demo video** (problem → payoff arc). *Time-sensitive.*
 - [ ] **Submit the Devpost form** (paste the submission PR link). *Time-sensitive.*
 - [ ] **Pick one headline beat** for the video/README pitch (speak in Spanish → real
