@@ -44,11 +44,14 @@ struct HomeView: View {
         VStack(spacing: Theme.Space.l) {
             Spacer(minLength: Theme.Space.m)
 
-            VoiceOrb(isListening: vm.speech.isListening)
+            VoiceOrb(isListening: vm.speech.isListening, hasError: vm.errorMessage != nil)
                 .contentShape(Circle())
                 .gesture(
                     DragGesture(minimumDistance: 0)
-                        .onChanged { _ in vm.startVoiceInput() }
+                        .onChanged { _ in
+                            hideKeyboard()   // grabbing the orb puts the keyboard away
+                            vm.startVoiceInput()
+                        }
                         .onEnded { _ in vm.endVoiceInput() }
                 )
 
@@ -72,6 +75,12 @@ struct HomeView: View {
                         .padding(.vertical, 14).padding(.horizontal, 18)
                         .background(Capsule().fill(Theme.surface))
                         .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("Done") { hideKeyboard() }
+                            }
+                        }
 
                     Button { vm.submitGoal(vm.draftText) } label: {
                         Image(systemName: "arrow.up")
@@ -121,6 +130,20 @@ struct HomeView: View {
         }
         .padding(.horizontal, Theme.Space.l)
         .padding(.bottom, Theme.Space.m)
+        // Tap any empty area to dismiss the keyboard (sits behind the controls,
+        // so the orb, toggles, and text field still get their taps first).
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { hideKeyboard() }
+        )
+        // …and a swipe down anywhere does the same.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 20)
+                .onEnded { value in
+                    if value.translation.height > 40 { hideKeyboard() }
+                }
+        )
     }
 
     // MARK: Confirm gate
@@ -264,6 +287,11 @@ struct HomeView: View {
     }
 
     private var isEmpty: Bool { vm.draftText.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// Resign the keyboard (whichever text field is first responder).
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
 }
 
 // (Removed HoldButtonStyle — a ButtonStyle's isPressed via onChange doesn't

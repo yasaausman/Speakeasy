@@ -52,7 +52,8 @@ enum Theme {
     static let primary = Color.cool(0x1CB0F6, 0x1CB0F6)      // Friendly Sky Blue
     static let primaryDeep = Color.cool(0x1899D6, 0x1899D6)
     static let accent = Color.cool(0xFF9600, 0xFF9600)       // Playful Orange
-    static let success = Color.cool(0x58CC02, 0x58CC02)      // Bouncy Green
+    static let success = Color.cool(0x58CC02, 0x58CC02)      // Bouncy Green (listening)
+    static let warning = Color.cool(0xFFC800, 0xFFC800)      // Friendly Amber (couldn't hear)
 
     // Lines
     static let hairline = Color.cool(0xE2E8F0, 0x4A5568)

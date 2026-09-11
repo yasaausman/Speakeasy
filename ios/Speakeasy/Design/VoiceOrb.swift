@@ -4,12 +4,21 @@ import SwiftUI
 /// turns to a live "listening" state. It's the invitation to speak.
 struct VoiceOrb: View {
     var isListening: Bool
+    /// True when a listen attempt just failed (mic/speech couldn't start) — the
+    /// orb goes amber to match the error banner.
+    var hasError: Bool = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var breathe = false
     @State private var blink = false
 
-    private var tint: Color { isListening ? Theme.accent : Theme.primary }
-    private var tintDeep: Color { isListening ? Theme.accent.opacity(0.8) : Theme.primaryDeep }
+    private var tint: Color {
+        if hasError { return Theme.warning }
+        return isListening ? Theme.success : Theme.primary
+    }
+    private var tintDeep: Color {
+        if hasError { return Theme.warning.opacity(0.8) }
+        return isListening ? Theme.success.opacity(0.8) : Theme.primaryDeep
+    }
 
     var body: some View {
         ZStack {
@@ -52,8 +61,7 @@ struct VoiceOrb: View {
                         .trim(from: 0.0, to: 0.5)
                         .stroke(style: StrokeStyle(lineWidth: 6, lineCap: .round))
                         .fill(.white)
-                        .frame(width: 24, height: 24)
-                        .rotationEffect(.degrees(180)) // Open mouth smile
+                        .frame(width: 24, height: 24) // Upturned open-mouth smile
                 } else {
                     Capsule()
                         .fill(.white)
@@ -75,6 +83,6 @@ struct VoiceOrb: View {
             value: breathe
         )
         .onAppear { breathe = true }
-        .accessibilityLabel(isListening ? "Listening" : "Tap and hold to speak")
+        .accessibilityLabel(isListening ? "Listening" : (hasError ? "Didn't catch that" : "Tap and hold to speak"))
     }
 }
