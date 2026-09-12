@@ -8,6 +8,7 @@
  *
  * The real path first requires CALL-E browser auth (see README).
  */
+import "../server/env.js"; // load .env first, so SMOKE_TARGET_NUMBER / CALLE_MODE are read
 import { createCalleClient } from "../server/calle/client.js";
 import type { CallBrief } from "../server/calle/types.js";
 
