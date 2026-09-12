@@ -320,6 +320,8 @@ function buildBrief(englishGoal: string, targetNumber: string, ctx: BriefContext
   if (availability) constraints.push(`The user is free at these times — prefer these: ${availability}`);
   if (p?.avoid) constraints.push(`Do NOT book these times: ${p.avoid}`);
   if (p?.budget) constraints.push(`Budget: keep it within ${p.budget}`);
+  // Payment is a spoken note only — never card details. Tell them how the user will pay.
+  if (p?.payment) constraints.push(`Payment: ${p.payment}. Do NOT provide or read any card numbers.`);
 
   if (intent === "discover") {
     return {
@@ -376,6 +378,7 @@ function cleanupPreferences(p?: CallPreferences): CallPreferences | undefined {
     fallbackTimes: t(p.fallbackTimes),
     avoid: t(p.avoid),
     budget: t(p.budget),
+    payment: t(p.payment),
   };
   return Object.values(out).some(Boolean) ? out : undefined;
 }

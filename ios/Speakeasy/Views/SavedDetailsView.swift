@@ -43,6 +43,30 @@ struct SavedDetailsView: View {
                 .padding(.vertical, 4)
                 .softCard(Theme.surface)
 
+                // Payment — a spoken note only. We never store or read card numbers.
+                sectionHeader("Payment", "How you'll pay, spoken to the business. Speakeasy never stores or reads card numbers.")
+                VStack(spacing: 0) {
+                    HStack(spacing: Theme.Space.s) {
+                        Image(systemName: "creditcard.fill").font(.subheadline).foregroundStyle(Theme.primary).frame(width: 26)
+                        Text("How you'll pay").font(.subheadline).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Menu {
+                            ForEach(["", "Pay on pickup", "Pay on delivery", "Card on file with the business"], id: \.self) { opt in
+                                Button(opt.isEmpty ? "Not specified" : opt) { store.details.payment = opt }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(store.details.payment.isEmpty ? "Not specified" : store.details.payment)
+                                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.primary)
+                                Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Theme.inkSecondary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 12).padding(.horizontal, 18)
+                }
+                .padding(.vertical, 4)
+                .softCard(Theme.surface)
+
                 // Calendar
                 sectionHeader("Calendar", nil)
                 VStack(alignment: .leading, spacing: Theme.Space.s) {

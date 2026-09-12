@@ -125,9 +125,10 @@ struct CallPreferences: Codable, Equatable {
     var fallbackTimes: String?
     var avoid: String?
     var budget: String?
+    var payment: String?   // e.g. "Pay on pickup" — a spoken note, never card data
 
     var isEmpty: Bool {
-        [preferredTimes, fallbackTimes, avoid, budget]
+        [preferredTimes, fallbackTimes, avoid, budget, payment]
             .allSatisfy { ($0 ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
     }
 }
@@ -145,6 +146,7 @@ struct SavedDetails: Codable, Equatable {
     var fallbackTimes = ""
     var avoid = ""
     var budget = ""
+    var payment = ""   // how the user will pay (e.g. "Pay on pickup") — never card data
 
     /// Non-empty fields as a facts dictionary for the call brief.
     var asFacts: [String: String] {
@@ -168,7 +170,7 @@ struct SavedDetails: Codable, Equatable {
             return s.isEmpty ? nil : s
         }
         let p = CallPreferences(preferredTimes: t(preferredTimes), fallbackTimes: t(fallbackTimes),
-                                avoid: t(avoid), budget: t(budget))
+                                avoid: t(avoid), budget: t(budget), payment: t(payment))
         return p.isEmpty ? nil : p
     }
 

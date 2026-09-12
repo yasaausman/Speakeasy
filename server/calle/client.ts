@@ -412,7 +412,23 @@ export class CalleClient {
     }
 
     const terminal = await this.pollRun(run.run_id, onUpdate);
-    return this.normalize(terminal);
+    this.log("run:terminal-raw", {
+      status: terminal.status ?? null,
+      hasTranscript: !!terminal.transcript,
+      activityCount: Array.isArray(terminal.activity) ? terminal.activity.length : 0,
+      detailKeys:
+        terminal.details && typeof terminal.details === "object" ? Object.keys(terminal.details) : [],
+    });
+    const result = this.normalize(terminal);
+    this.log("run:result", {
+      status: result.status,
+      rawStatus: result.rawStatus,
+      taskCompleted: result.taskCompleted ?? null,
+      confirmations: result.confirmationNumbers,
+      transcriptChars: result.transcript.length,
+      summary: result.outcome.slice(0, 200),
+    });
+    return result;
   }
 
   /** Turn a terminal get_call_run response into Speakeasy's CallResult. */

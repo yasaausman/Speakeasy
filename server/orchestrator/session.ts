@@ -51,6 +51,7 @@ export interface CallPreferences {
   fallbackTimes?: string; // "any afternoon, or Sunday morning"
   avoid?: string; // "not before 10am"
   budget?: string; // "under $40"
+  payment?: string; // "Pay on pickup" — a note the agent conveys; NEVER card data
 }
 
 /** An available appointment slot discovered on a "discover" call (C4). */
