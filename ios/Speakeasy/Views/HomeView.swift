@@ -30,7 +30,8 @@ struct HomeView: View {
                 } else if let r = vm.result {
                     ResultCardView(result: r, store: vm.store,
                                    phoneNumber: vm.understanding?.targetNumber,
-                                   onReplay: { vm.speakResult() }, onRetry: vm.retry,
+                                   onReplay: { vm.toggleNarration() }, isSpeaking: vm.speech.isSpeaking,
+                                   onRetry: vm.retry,
                                    onAnswerGap: { vm.answerGap($0, value: $1) }, onDone: vm.reset)
                 }
             }

@@ -7,6 +7,7 @@ struct ResultCardView: View {
     @ObservedObject var store: AppStore
     var phoneNumber: String?
     var onReplay: () -> Void
+    var isSpeaking: Bool = false
     var onRetry: () -> Void
     var onAnswerGap: (String, String) -> Void
     var onDone: () -> Void
@@ -99,7 +100,8 @@ struct ResultCardView: View {
 
                     HStack(spacing: Theme.Space.s) {
                         Button(action: onReplay) {
-                            Label("Play narration", systemImage: "speaker.wave.2.fill")
+                            Label(isSpeaking ? "Stop" : "Play narration",
+                                  systemImage: isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Theme.primary)
                                 .padding(.vertical, 10).padding(.horizontal, 16)

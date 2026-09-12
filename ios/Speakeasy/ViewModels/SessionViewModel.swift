@@ -228,12 +228,16 @@ final class SessionViewModel: ObservableObject {
         narrate(trimmed)
     }
 
-    /// Replay the assistant's latest message aloud (an explicit tap speaks even in
-    /// text-forward mode).
+    /// Toggle the assistant's latest message aloud — tap to play, tap again to stop.
     func replayAssistant() {
+        if speech.isSpeaking { speech.stopSpeaking(); return }
         guard let msg = assistantMessage else { return }
-        speech.stopSpeaking()
         speech.speak(msg, localeId: language.ttsLocale)
+    }
+
+    /// Toggle the result narration — tap to play, tap again to stop.
+    func toggleNarration() {
+        if speech.isSpeaking { speech.stopSpeaking() } else { speakResult() }
     }
 
     /// Speak only when not in text-forward (Deaf/HoH) mode.

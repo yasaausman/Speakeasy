@@ -444,7 +444,9 @@ export class CalleClient {
       outcome,
       structured,
       confirmationNumbers,
-      transcript: r.transcript ?? "",
+      // Real runs often don't return a transcript field — reconstruct it from the
+      // live activity feed so the user still sees the conversation.
+      transcript: (r.transcript ?? "").trim() || activityToTranscript(r.activity),
       appointmentText,
       provider,
       confidence,
@@ -453,6 +455,20 @@ export class CalleClient {
       taskCompleted,
     };
   }
+}
+
+/** Join a CALL-E activity feed into a readable transcript (fallback when the
+ *  terminal result has no transcript field). */
+function activityToTranscript(activity: unknown): string {
+  if (!Array.isArray(activity)) return "";
+  return activity
+    .map((it) =>
+      it && typeof it === "object" && typeof (it as { message?: unknown }).message === "string"
+        ? (it as { message: string }).message
+        : "",
+    )
+    .filter(Boolean)
+    .join("\n");
 }
 
 function strArrayOf(v: unknown): string[] | undefined {
@@ -471,7 +487,9 @@ function collectConfirmationNumbers(structured: Record<string, unknown>, outcome
   }
   if (found.size === 0) {
     const m = outcome.match(/(?:confirmation|reference|booking)\s*(?:number|no\.?|#)?\s*[:#]?\s*([A-Z0-9-]{3,})/i);
-    if (m) found.add(m[1]);
+    // Require at least one digit, so we don't capture the literal word
+    // "number"/"reference" from a sentence like "capture any confirmation number".
+    if (m && /\d/.test(m[1])) found.add(m[1]);
   }
   return [...found];
 }
