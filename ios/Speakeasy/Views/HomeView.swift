@@ -55,15 +55,27 @@ struct HomeView: View {
                         .onEnded { _ in vm.endVoiceInput() }
                 )
 
-            Text(vm.speech.isListening
-                 ? (vm.speech.partialText.isEmpty ? "Listening…" : vm.speech.partialText)
-                 : "Hold to speak — or type below")
-                .font(vm.speech.isListening ? .title3.weight(.semibold) : .callout)
-                .foregroundStyle(vm.speech.isListening ? Theme.ink : Theme.inkSecondary)
-                .multilineTextAlignment(.center)
-                .frame(minHeight: 52)
-                .padding(.horizontal, Theme.Space.l)
-                .animation(.easeInOut, value: vm.speech.isListening)
+            Group {
+                if vm.isSubmitting {
+                    HStack(spacing: 10) {
+                        ProgressView().tint(Theme.primary)
+                        Text("Understanding…")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Theme.ink)
+                    }
+                } else {
+                    Text(vm.speech.isListening
+                         ? (vm.speech.partialText.isEmpty ? "Listening…" : vm.speech.partialText)
+                         : "Hold to speak — or type below")
+                        .font(vm.speech.isListening ? .title3.weight(.semibold) : .callout)
+                        .foregroundStyle(vm.speech.isListening ? Theme.ink : Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .frame(minHeight: 52)
+            .padding(.horizontal, Theme.Space.l)
+            .animation(.easeInOut, value: vm.speech.isListening)
+            .animation(.easeInOut, value: vm.isSubmitting)
 
             Spacer(minLength: 0)
 
@@ -87,10 +99,10 @@ struct HomeView: View {
                             .font(.headline.weight(.bold))
                             .foregroundStyle(.white)
                             .frame(width: 52, height: 52)
-                            .background(Circle().fill(isEmpty ? Theme.inkSecondary.opacity(0.4) : Theme.primary))
-                            .shadow(color: isEmpty ? .clear : Theme.primary.opacity(0.35), radius: 12, y: 6)
+                            .background(Circle().fill(sendDisabled ? Theme.inkSecondary.opacity(0.4) : Theme.primary))
+                            .shadow(color: sendDisabled ? .clear : Theme.primary.opacity(0.35), radius: 12, y: 6)
                     }
-                    .disabled(isEmpty)
+                    .disabled(sendDisabled)
                     .animation(.easeInOut, value: isEmpty)
                 }
 
@@ -287,6 +299,7 @@ struct HomeView: View {
     }
 
     private var isEmpty: Bool { vm.draftText.trimmingCharacters(in: .whitespaces).isEmpty }
+    private var sendDisabled: Bool { isEmpty || vm.isSubmitting }
 
     /// Resign the keyboard (whichever text field is first responder).
     private func hideKeyboard() {

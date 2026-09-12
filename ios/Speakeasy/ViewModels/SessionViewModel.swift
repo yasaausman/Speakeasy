@@ -17,6 +17,11 @@ final class SessionViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var draftText: String = ""
 
+    /// True from the moment a goal is submitted until the readback arrives (or it
+    /// fails). Drives the "Understanding…" state and blocks a second submit — which
+    /// was double-sending the goal and queuing two spoken readbacks.
+    @Published var isSubmitting = false
+
     /// Multi-call comparison mode. Sends a preset set of demo numbers.
     @Published var compareMode: Bool = false
     let compareNumbers = ["+13120001111", "+13120002222", "+13120003333"]
@@ -70,7 +75,7 @@ final class SessionViewModel: ObservableObject {
 
     /// Begin capturing speech in the user's language. Requests permission first.
     func startVoiceInput() {
-        guard canAcceptInput, !speech.isListening, !wantsListening else { return }
+        guard canAcceptInput, !isSubmitting, !speech.isListening, !wantsListening else { return }
         wantsListening = true
         errorMessage = nil   // clear any stale notice — this is a fresh attempt
         speech.stopSpeaking()
@@ -110,6 +115,8 @@ final class SessionViewModel: ObservableObject {
 
     /// Compose the full request (facts + preferences + calendar availability) and run.
     private func launch(goal: String, intent: String) {
+        guard !isSubmitting else { return }   // ignore a second Send while one is in flight
+        isSubmitting = true
         lastGoalText = goal   // single source of truth — retry/amend build on this
         let numbers: [String]? = compareMode ? compareNumbers : (targetNumber.map { [$0] })
         let facts = compareMode ? nil : store.details.asFacts        // share saved details on single calls
@@ -129,6 +136,7 @@ final class SessionViewModel: ObservableObject {
             let u = try await self.api.submitGoal(sessionId: sid, req)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
+            self.isSubmitting = false
             self.narrate(u.readbackUserLang)   // read the goal back (unless text-forward)
         }
     }
@@ -188,6 +196,7 @@ final class SessionViewModel: ObservableObject {
     /// Speak only when not in text-forward (Deaf/HoH) mode.
     private func narrate(_ text: String) {
         guard !store.textForward else { return }
+        speech.stopSpeaking()   // never let a readback stack on top of earlier speech
         speech.speak(text, localeId: language.ttsLocale)
     }
 
@@ -225,6 +234,7 @@ final class SessionViewModel: ObservableObject {
     func reset() {
         pollTask?.cancel()
         speech.stopSpeaking()
+        isSubmitting = false
         phase = .idle
         understanding = nil
         statusLine = nil
@@ -311,6 +321,7 @@ final class SessionViewModel: ObservableObject {
         Task {
             do { try await work() }
             catch {
+                self.isSubmitting = false
                 self.errorMessage = error.localizedDescription
                 self.phase = .failed
             }
