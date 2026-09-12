@@ -1,31 +1,35 @@
 # Speakeasy — Design system (iOS)
 
-A **calm, blue** world for an app that makes scary English phone calls on the
-user's behalf. Cool and trustworthy, not a cold utility app. Native SwiftUI,
-HIG-respecting (Dynamic Type, semantic dark mode, one interactive tint, SF
-Symbols, system controls).
+A **playful, vibrant, trustworthy** world for an app that makes scary English
+phone calls on the user's behalf. Friendly and reassuring — a companion, not a
+cold utility. Native SwiftUI, HIG-respecting (Dynamic Type, semantic dark mode,
+one interactive tint, SF Symbols, system controls, in-context permissions).
 
-Source of truth: `Speakeasy/Design/Theme.swift` (tokens + components) and
-`Speakeasy/Design/VoiceOrb.swift` (signature element).
+Source of truth: `Speakeasy/Design/Theme.swift` (tokens + components + haptics)
+and `Speakeasy/Design/VoiceOrb.swift` (signature element).
 
 ## Palette (adapts light ⇄ dark)
 
 | Role | Light | Dark |
 | --- | --- | --- |
-| ground | `#EDF1F7` cool blue-gray | `#0E1420` deep navy |
-| surface (cards) | `#FCFDFF` | `#18202E` |
-| surfaceSunk | `#E3EAF3` | `#1E2838` |
-| ink | `#1B2430` | `#E9EEF6` |
-| inkSecondary | `#5B6675` | `#94A2B6` |
-| **primary (blue, the one tint)** | `#2F6FE4` | `#5B8DEF` |
-| primaryDeep | `#2559C0` | `#4A7CE0` |
-| accent (teal, highlights only) | `#0E97A6` | `#2CC5CE` |
-| success | `#1E9A66` | `#4FC48A` |
-| hairline | `#DCE4EE` | `#263349` |
+| ground | `#F4F7F6` soft mint-gray | `#1A1C19` |
+| groundTop (gradient top) | `#FCFEFD` | `#23261F` |
+| surface (cards) | `#FFFFFF` | `#2A2D2A` |
+| surfaceSunk | `#E8ECEB` | `#141513` |
+| ink | `#2D3748` | `#F7FAFC` |
+| inkSecondary | `#626C7A` | `#A0AEC0` |
+| **primary (sky blue, the one tint)** | `#1CB0F6` | `#1CB0F6` |
+| primaryDeep | `#1899D6` | `#1899D6` |
+| accent (playful orange) | `#FF9600` | `#FF9600` |
+| success (bouncy green) | `#58CC02` | `#58CC02` |
+| warning (friendly amber) | `#FFC800` | `#FFC800` |
+| hairline | `#E2E8F0` | `#4A5568` |
 
-Blue is the single interactive tint (orb, buttons, toggle, links, nav). Teal is
-decoration only — the multi-call winner card and the Add-to-Calendar action.
-Never beige; grounds are cool blue-gray.
+Sky blue is the single interactive tint (orb idle, buttons, toggles, links, nav).
+Green = listening / success; amber = "couldn't hear" and gentle notices; orange =
+accents and the multi-call winner. The ground uses a subtle top-down gradient
+(`Theme.backgroundGradient`) so screens read with depth, not flat gray.
+`inkSecondary` is tuned to clear **WCAG AA** contrast on the ground.
 
 ## Type
 
@@ -34,27 +38,44 @@ Type). Weight and size carry hierarchy; no hard-coded point sizes.
 
 ## Shape, depth, motion
 
-- Cards: 24pt continuous radius, cool surface, hairline, soft shadow. `.softCard()`.
-- Buttons: `PrimaryPill` (blue), `SoftPill` (surface). 52pt min height.
-- **Signature:** `VoiceOrb` — a blue orb that gently breathes (Reduce-Motion
-  aware); turns red + waveform while listening.
+- Cards: 32pt continuous radius, surface fill, hairline, soft shadow. `.softCard()`.
+- Buttons: `PrimaryPill` (blue), `SoftPill` (surface). 52pt min height. All primary
+  tap targets ≥ 44pt.
+- **Haptics** (`Theme.swift` → `Haptics`): light tap on a starter chip, medium on
+  "Yes, call", success notification on a completed booking.
+- **Signature:** `VoiceOrb` — a sky-blue orb with a **mascot face** that breathes
+  and blinks (Reduce-Motion aware); turns green + smiles while listening, amber on
+  a mic/speech error.
 
 ## Navigation & screens
 
 - **Burger drawer** (`SideDrawer`) from the leading edge → Home, Your details,
   History, How it works, plus a Language quick row. Dim scrim, spring slide.
-- **Home** (`HomeView`): orb + prompt → confirm gate → **live call transcript**
-  (chat bubbles: Agent / Them, auto-scrolling) → result / ranked.
-- **Your details** (`SavedDetailsView`): the facts vault — name, callback,
-  insurance, DOB, address; auto-saved, shared only when a rep asks.
+- **Home** (`HomeView`): orb + localized greeting → **starter chips** (tappable,
+  localized example goals that solve the blank-canvas problem) → confirm gate →
+  **live call transcript** (chat bubbles: Agent / Them, auto-scrolling) →
+  result / ranked. Location is requested **in context** (first goal submit), never
+  on cold launch.
+- **Your details** (`SavedDetailsView`): the facts vault + booking preferences +
+  safe payment preference (never card numbers) + calendar & accessibility toggles.
 - **History** (`HistoryView`): past calls with outcomes, confirmation chips, and
-  replay; empty state.
+  replay; friendly empty state.
 - **How it works** (`AboutView`): calm 4-step, text-forward (accessibility).
-- **Language** (`LanguagePickerView`): searchable sheet, 12 languages.
-- **Result** (`ResultCardView`): outcome, confirmation chip, Play narration, and
-  **Add to Calendar** (EventKit) when an appointment is present.
+- **Language** (`LanguagePickerView`): searchable sheet, 12 languages; full **RTL**
+  for Arabic (the whole UI mirrors — verified).
+- **Result** (`ResultCardView`): status, confidence + evidence badge, confirmation
+  chip, gap-surfacing + retry, Play narration, **Add to Calendar** (EventKit),
+  collapsible English transcript, and a confetti burst on success.
+
+## Localization
+
+Every user-facing readback/outcome flows through the backend translation layer.
+On-device, the Home greeting, starter chips, and the two Home captions are
+localized into the app's languages (`Models/Suggestions.swift`) with an English
+fallback. Remaining static UI chrome (button labels) is a candidate for a future
+full-i18n pass.
 
 ## Direction contract
 
-Recorded in `Design/Theme.swift`'s opening comment. Direction "calm-blue" pinned
-by the user (replacing the earlier warm world).
+Recorded in `Design/Theme.swift`'s opening comment. Direction evolved
+warm → calm-blue → **playful & vibrant** (user-pinned sky-blue with a mascot orb).

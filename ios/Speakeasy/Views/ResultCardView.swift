@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Single-call result, warm-human world: outcome, a confirmation chip, replay,
-/// and a collapsible English transcript.
+/// Single-call result: outcome, a confidence badge, a confirmation chip, replay,
+/// Add-to-Calendar, and a collapsible English transcript. Confetti on success.
 struct ResultCardView: View {
     let result: CallResult
     @ObservedObject var store: AppStore
@@ -37,8 +37,11 @@ struct ResultCardView: View {
                             Label(c.label.capitalized, systemImage: "checkmark.seal.fill")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(confidenceColor(c.label))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .padding(.vertical, 5).padding(.horizontal, 10)
                                 .background(Capsule().fill(confidenceColor(c.label).opacity(0.14)))
+                                .accessibilityLabel("Confidence: \(c.label)")
                         }
                     }
 
@@ -152,7 +155,10 @@ struct ResultCardView: View {
             .padding(.horizontal, Theme.Space.l)
             .padding(.vertical, Theme.Space.m)
         }
-        .onAppear { autoAddIfNeeded() }
+        .onAppear {
+            autoAddIfNeeded()
+            if result.status == .completed { Haptics.success() }
+        }
 
         if result.status == .completed {
             ConfettiView()

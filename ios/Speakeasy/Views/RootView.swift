@@ -40,7 +40,7 @@ struct RootView: View {
         ZStack(alignment: .topLeading) {
             NavigationStack {
                 ZStack {
-                    Theme.ground.ignoresSafeArea()
+                    Theme.backgroundGradient.ignoresSafeArea()
                     routedContent
                 }
                 .navigationTitle(route.title)
@@ -106,7 +106,7 @@ struct RootView: View {
                 Text(vm.language.endonym).font(.subheadline.weight(.semibold))
             }
             .foregroundStyle(Theme.primary)
-            .padding(.horizontal, 12).padding(.vertical, 7)
+            .padding(.horizontal, 14).frame(minHeight: 44)
             .background(Capsule().fill(Theme.surface))
             .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
         }

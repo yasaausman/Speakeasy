@@ -41,12 +41,20 @@ extension Color {
 enum Theme {
     // Grounds & surfaces (Playful & Vibrant)
     static let ground = Color.cool(0xF4F7F6, 0x1A1C19)       // Very soft mint/gray tint
+    static let groundTop = Color.cool(0xFCFEFD, 0x23261F)    // Lighter top for a soft vertical gradient
     static let surface = Color.cool(0xFFFFFF, 0x2A2D2A)      // Pure white cards
     static let surfaceSunk = Color.cool(0xE8ECEB, 0x141513)
 
+    // A gentle top-down gradient — adds depth so the screen doesn't read as flat gray.
+    static var backgroundGradient: LinearGradient {
+        LinearGradient(colors: [groundTop, ground], startPoint: .top, endPoint: .bottom)
+    }
+
     // Ink (Friendly, not pure black)
     static let ink = Color.cool(0x2D3748, 0xF7FAFC)
-    static let inkSecondary = Color.cool(0x718096, 0xA0AEC0)
+    // Darkened light value from 0x718096 → 0x626C7A so secondary text clears WCAG AA
+    // (≈4.8:1 on the ground; was ≈3.7:1).
+    static let inkSecondary = Color.cool(0x626C7A, 0xA0AEC0)
 
     // Brand - Vibrant, friendly primary colors (like Duolingo's green/blue/orange)
     static let primary = Color.cool(0x1CB0F6, 0x1CB0F6)      // Friendly Sky Blue
@@ -111,4 +119,15 @@ struct SoftPill: ButtonStyle {
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
     }
+}
+
+// MARK: - Haptics
+
+/// Small, tasteful haptic feedback for the moments that matter — confirming a call
+/// and hearing it succeeded. Kept in one place so it stays consistent and easy to
+/// mute. No-ops gracefully where haptics aren't available (e.g. Simulator).
+enum Haptics {
+    static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    static func confirm() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
+    static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
 }

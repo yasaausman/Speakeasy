@@ -69,8 +69,9 @@ final class SessionViewModel: ObservableObject {
             .sink { [weak self] message in self?.errorMessage = message }
             .store(in: &cancellables)
 
-        // Ask for a coarse location up front so "a dentist near me" can be looked up.
-        location.requestIfNeeded()
+        // Location is requested in-context — on the first goal submit (see launch),
+        // never on cold launch. Prompting before the user has done anything reads as
+        // invasive and gets denied more often (Apple HIG: request in context).
     }
 
     // MARK: Voice input (press-to-talk)
@@ -145,6 +146,9 @@ final class SessionViewModel: ObservableObject {
         isSubmitting = true
         lastGoalText = goal   // single source of truth — retry/amend build on this
         let numbers: [String]? = targetNumber.map { [$0] }   // only when pinned from Contacts
+        // In-context location: only when we'll actually look a place up ("near me"),
+        // i.e. the user hasn't pinned a specific number. Prompts at most once.
+        if numbers == nil { location.requestIfNeeded() }
         let facts = store.details.asFacts            // always share saved details now
         let prefs = store.details.asPreferences      // front-loaded preferences
         let wantAvailability = store.useCalendarAvailability

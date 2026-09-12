@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The signature element: a warm coral orb that gently breathes while idle and
-/// turns to a live "listening" state. It's the invitation to speak.
+/// The signature element: a friendly sky-blue orb with a mascot face that gently
+/// breathes and blinks while idle, and turns green while listening (amber on a
+/// mic/speech error). It's the invitation to speak.
 struct VoiceOrb: View {
     var isListening: Bool
     /// True when a listen attempt just failed (mic/speech couldn't start) — the

@@ -64,13 +64,21 @@ struct HomeView: View {
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(Theme.ink)
                     }
-                } else {
-                    Text(vm.speech.isListening
-                         ? (vm.speech.partialText.isEmpty ? "Listening…" : vm.speech.partialText)
-                         : "Hold to speak — or type below")
-                        .font(vm.speech.isListening ? .title3.weight(.semibold) : .callout)
-                        .foregroundStyle(vm.speech.isListening ? Theme.ink : Theme.inkSecondary)
+                } else if vm.speech.isListening {
+                    Text(vm.speech.partialText.isEmpty ? "Listening…" : vm.speech.partialText)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
+                } else {
+                    VStack(spacing: 6) {
+                        Text(HomeGreeting.text(for: vm.language.code))
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(Theme.ink)
+                        Text(HomeStrings.holdToSpeak(for: vm.language.code))
+                            .font(.callout)
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                    .multilineTextAlignment(.center)
                 }
             }
             .frame(minHeight: 52)
@@ -78,11 +86,20 @@ struct HomeView: View {
             .animation(.easeInOut, value: vm.speech.isListening)
             .animation(.easeInOut, value: vm.isSubmitting)
 
+            // Starter chips — concrete, tappable examples so a first-time (or
+            // non-English) user isn't staring at a blank canvas. Hidden once they
+            // start typing or speaking. Tapping submits; the confirm gate still guards.
+            if showSuggestions {
+                suggestionChips
+                    .padding(.horizontal, Theme.Space.s)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+
             Spacer(minLength: 0)
 
             VStack(spacing: Theme.Space.s) {
                 HStack(spacing: Theme.Space.s) {
-                    TextField("What do you need?", text: $vm.draftText, axis: .vertical)
+                    TextField(HomeStrings.inputPlaceholder(for: vm.language.code), text: $vm.draftText, axis: .vertical)
                         .font(.body)
                         .foregroundStyle(Theme.ink)
                         .padding(.vertical, 14).padding(.horizontal, 18)
@@ -147,6 +164,7 @@ struct HomeView: View {
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: vm.errorMessage)
             .animation(.easeInOut, value: vm.assistantMessage)
         }
+        .animation(.easeInOut(duration: 0.25), value: showSuggestions)
         .padding(.horizontal, Theme.Space.l)
         .padding(.bottom, Theme.Space.m)
         // Tap any empty area to dismiss the keyboard (sits behind the controls,
@@ -237,7 +255,7 @@ struct HomeView: View {
 
             HStack(spacing: Theme.Space.s) {
                 Button("Edit") { vm.reject() }.buttonStyle(SoftPill())
-                Button { vm.confirmAndCall() } label: {
+                Button { Haptics.confirm(); vm.confirmAndCall() } label: {
                     Label("Yes, call", systemImage: "phone.arrow.up.right.fill")
                 }.buttonStyle(PrimaryPill())
             }
@@ -319,6 +337,47 @@ struct HomeView: View {
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(tint.opacity(0.12)))
         }
         .frame(maxWidth: .infinity, alignment: align == .leading ? .leading : .trailing)
+    }
+
+    // MARK: Starter chips
+    private var showSuggestions: Bool {
+        isEmpty && !vm.isSubmitting && !vm.speech.isListening
+            && vm.assistantMessage == nil && vm.errorMessage == nil
+    }
+
+    private var suggestionChips: some View {
+        let columns = [GridItem(.flexible(), spacing: Theme.Space.s),
+                       GridItem(.flexible(), spacing: Theme.Space.s)]
+        return LazyVGrid(columns: columns, spacing: Theme.Space.s) {
+            ForEach(Suggestion.all()) { s in
+                let label = s.text(for: vm.language.code)
+                Button {
+                    Haptics.tap()
+                    hideKeyboard()
+                    vm.submitGoal(label)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: s.icon)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.primary)
+                        Text(label)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Theme.ink)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)   // shrink long localized labels instead of truncating
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.vertical, 12).padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.surface))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.hairline, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .disabled(!vm.canAcceptInput)
+                .accessibilityHint("Sends this request")
+            }
+        }
     }
 
     private var isEmpty: Bool { vm.draftText.trimmingCharacters(in: .whitespaces).isEmpty }

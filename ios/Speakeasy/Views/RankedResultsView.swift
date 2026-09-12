@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Multi-call comparison (C1), warm-human world: a honey-lit winner card, then
-/// the ranked list of every place we called, best first.
+/// Multi-call comparison (C1): a highlighted winner card in the teal accent, then
+/// the ranked list of every place we called, best first, and one-tap "book the best".
 struct RankedResultsView: View {
     let ranked: [RankedResult]
     let winnerReason: String?
