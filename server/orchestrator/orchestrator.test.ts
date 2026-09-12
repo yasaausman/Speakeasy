@@ -140,3 +140,54 @@ test("front-loaded preferences flow into the brief as constraints", async () => 
   assert.ok(brief!.constraints.some((c) => /Saturday 2-4pm/.test(c)), "preferred time is a constraint");
   assert.ok(/Sunday morning/.test(brief!.fallback), "fallback times drive the brief fallback");
 });
+
+// ── Guardrails (non-negotiable) ──────────────────────────────────────────────
+// These assert the safety promises in the README/SELF-JUDGING actually hold in
+// the code path that reaches CALL-E, not just in prose.
+
+/** Any 13–19 digit run (spaces/dashes allowed) looks like a payment card number. */
+const CARD_LIKE = /(?:\d[ -]?){13,19}/;
+
+test("guardrail: a payment preference never leaks a card number into the plan input", async () => {
+  const orch = makeOrchestrator();
+  const session = orch.createSession("en");
+  await orch.submitGoal(session.id, "order two shawarma for pickup", "en", {
+    numbers: ["+13120001111"],
+    preferences: { payment: "pay on pickup" },
+  });
+  const brief = orch.getSession(session.id)?.brief;
+  assert.ok(brief, "single-order mode builds a brief");
+  // The payment method is conveyed, and the agent is explicitly forbidden to read cards.
+  assert.ok(
+    brief!.constraints.some((c) => /pay on pickup/i.test(c) && /do not (provide|read) .*card/i.test(c)),
+    "payment constraint states the method AND forbids reading card numbers",
+  );
+  // The composed plan_call input the agent actually receives carries no card-like number.
+  const planInput = CalleClient.briefToUserInput(brief!);
+  assert.ok(!CARD_LIKE.test(planInput.user_input), "no card-like digits reach the plan input");
+  assert.ok(/do not (provide|read) .*card/i.test(planInput.user_input), "no-card instruction survives into the input");
+});
+
+test("guardrail: every brief opens with the AI disclosure as the first line", async () => {
+  const orch = makeOrchestrator();
+  const session = orch.createSession("en");
+  await orch.submitGoal(session.id, "book a haircut at 3pm", "en", { numbers: ["+13120001111"] });
+  const brief = orch.getSession(session.id)?.brief;
+  assert.ok(brief, "brief is built at submit time");
+  const firstLine = CalleClient.briefToUserInput(brief!).user_input.split("\n")[0];
+  assert.match(firstLine, /AI assistant/i, "the caller identifies as an AI on the first line");
+  assert.equal(firstLine.trim(), brief!.agentDisclosure.trim(), "disclosure is verbatim and first");
+});
+
+test("guardrail: front-loaded facts never invite the agent to guess missing info", async () => {
+  const orch = makeOrchestrator();
+  const session = orch.createSession("en");
+  await orch.submitGoal(session.id, "book a dentist appointment", "en", {
+    numbers: ["+13120001111"],
+    facts: { insurance: "Medicaid", DOB: "1990-01-01" },
+  });
+  const brief = orch.getSession(session.id)?.brief;
+  const planInput = CalleClient.briefToUserInput(brief!).user_input;
+  assert.match(planInput, /do not guess/i, "the agent is told not to guess unknown details");
+  assert.match(planInput, /Medicaid/, "known facts are shared so the rep's question is answerable");
+});
