@@ -117,13 +117,17 @@ export class Orchestrator {
     } else {
       const mode: GoalMode =
         opts.intent === "discover" ? "discover" : await this.classifier.classify(englishGoal);
-      const limit = mode === "compare" ? 3 : 1;
-      const matches = await this.search.find(englishGoal, { near: opts.location, limit });
-      if (matches.length === 0) {
+      const wanted = mode === "compare" ? 3 : 1;
+      // Always fetch a few candidates: grounded search is unreliable at limit 1
+      // (the model tends to return an empty list), so ask for several and keep
+      // the top `wanted`.
+      const matches = await this.search.find(englishGoal, { near: opts.location, limit: Math.max(wanted, 4) });
+      const chosen = matches.slice(0, wanted);
+      if (chosen.length === 0) {
         throw new Error("I couldn't find a phone number for that. Try naming the place, or add a location.");
       }
-      businesses = matches.map((m) => ({ name: m.name, phone: m.phone, address: m.address }));
-      targets = matches.map((m) => m.phone);
+      businesses = chosen.map((m) => ({ name: m.name, phone: m.phone, address: m.address }));
+      targets = chosen.map((m) => m.phone);
       multi = mode === "compare" && targets.length > 1;
       intent = mode === "discover" ? "discover" : "book";
     }

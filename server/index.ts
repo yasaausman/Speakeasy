@@ -69,7 +69,14 @@ app.post("/api/sessions/:id/goal", async (req, reply) => {
     });
     return understanding;
   } catch (err) {
-    return reply.code(404).send({ error: err instanceof Error ? err.message : "unknown session" });
+    const message = err instanceof Error ? err.message : "unknown error";
+    if (message === "unknown session") {
+      return reply.code(404).send({ error: message });
+    }
+    // Anything else (translation/search/classify failure) — log the full error
+    // and report it so the app shows something useful instead of a bare 404.
+    req.log.error({ err }, "submitGoal failed");
+    return reply.code(502).send({ error: message });
   }
 });
 
