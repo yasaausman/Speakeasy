@@ -57,6 +57,10 @@ const DISCLOSURE =
 export class Orchestrator {
   readonly store = new SessionStore();
   readonly translatorName: string;
+  readonly searchName: string;
+  readonly classifierName: string;
+  /** "real" places live phone calls; "fake" is the dry-run transport. */
+  readonly calleMode: "fake" | "real" = process.env.CALLE_MODE === "real" ? "real" : "fake";
   private readonly calle: CalleClient;
   private readonly translator: Translator;
   private readonly ranker: Ranker;
@@ -75,6 +79,8 @@ export class Orchestrator {
     this.search = opts.search ?? createBusinessSearch();
     this.classifier = opts.classifier ?? createIntentClassifier();
     this.translatorName = this.translator.name;
+    this.searchName = this.search.name;
+    this.classifierName = this.classifier.name;
   }
 
   createSession(userLang: LangCode): Session {

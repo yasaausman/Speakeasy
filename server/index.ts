@@ -93,7 +93,18 @@ app.get("/api/sessions/:id", async (req, reply) => {
 const port = Number(process.env.PORT || 3000);
 app
   .listen({ port, host: "0.0.0.0" })
-  .then(() => app.log.info(`Speakeasy backend listening on :${port} · translator=${orchestrator.translatorName}`))
+  .then(() => {
+    app.log.info(
+      `Speakeasy backend listening on :${port} · calle=${orchestrator.calleMode} · ` +
+        `translator=${orchestrator.translatorName} · search=${orchestrator.searchName} · ` +
+        `intent=${orchestrator.classifierName}`,
+    );
+    if (orchestrator.calleMode === "real") {
+      app.log.warn("☎️  REAL call mode is ON — confirmed goals will place actual phone calls (and spend your CALL-E quota).");
+    } else {
+      app.log.info("Dry-run mode (no real calls). Set CALLE_MODE=real to place live calls.");
+    }
+  })
   .catch((err) => {
     app.log.error(err);
     process.exit(1);
