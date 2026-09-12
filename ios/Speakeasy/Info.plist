@@ -29,6 +29,8 @@
 	<string>Speakeasy adds appointments it books to your calendar.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Speakeasy connects to the Speakeasy backend running on your Mac to place calls.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Speakeasy uses your location to find nearby businesses to call.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Speakeasy uses the microphone so you can speak your request.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

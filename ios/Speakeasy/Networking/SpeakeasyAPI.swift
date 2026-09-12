@@ -15,7 +15,7 @@ struct GoalRequest: Encodable {
     var facts: [String: String]? = nil
     var preferences: CallPreferences? = nil
     var availability: String? = nil
-    var intent: String? = nil       // "book" | "discover"
+    var location: String? = nil     // "City, ST" for near-me business lookups
 }
 
 protocol SpeakeasyAPI {
@@ -119,7 +119,7 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
     /// On a physical device "localhost" is the phone itself, so point at the Mac's
     /// LAN IP (same Wi-Fi). Update this if your Mac's address changes —
     /// System Settings → Wi-Fi → Details, or `ipconfig getifaddr en0`.
-    var baseURL: URL = URL(string: "http://10.0.0.91:3000")!
+    var baseURL: URL = URL(string: "http://10.213.203.101:3000")!
 #endif
 
     func createSession(lang: String) async throws -> String {

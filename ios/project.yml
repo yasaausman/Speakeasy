@@ -24,6 +24,8 @@ targets:
         NSCalendarsWriteOnlyAccessUsageDescription: "Speakeasy adds appointments it books to your calendar."
         # Full access to read your free/busy so the agent only asks for open times.
         NSCalendarsFullAccessUsageDescription: "Speakeasy checks your free times so it only requests slots you're available for."
+        # Coarse location to find businesses near you ("a dentist near me").
+        NSLocationWhenInUseUsageDescription: "Speakeasy uses your location to find nearby businesses to call."
         # Reach the Speakeasy backend running on the Mac over the LAN (device testing).
         NSLocalNetworkUsageDescription: "Speakeasy connects to the Speakeasy backend running on your Mac to place calls."
         # Allow the plain-http LAN call to the Mac's private IP without disabling ATS globally.

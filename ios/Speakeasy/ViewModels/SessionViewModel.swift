@@ -22,14 +22,13 @@ final class SessionViewModel: ObservableObject {
     /// was double-sending the goal and queuing two spoken readbacks.
     @Published var isSubmitting = false
 
-    /// Multi-call comparison mode. Sends a preset set of demo numbers.
-    @Published var compareMode: Bool = false
-    let compareNumbers = ["+13120001111", "+13120002222", "+13120003333"]
+    /// The latest thing the assistant "said" to the user, in their own language —
+    /// shown as text on the home screen and spoken aloud (see `announce`). Every
+    /// agent answer flows through here so it's available in both text and audio.
+    @Published var assistantMessage: String?
 
-    /// Speculative booking: call 1 asks what's available, you pick, call 2 books.
-    @Published var discoverMode: Bool = false
-
-    /// Specific number to call (from the confirm screen / Contacts). nil = default.
+    /// Specific number to call (from the confirm screen / Contacts). nil → the
+    /// backend infers the mode and looks up the number(s) from the goal + location.
     @Published var targetNumber: String?
     private(set) var lastGoalText = ""
 
@@ -39,6 +38,9 @@ final class SessionViewModel: ObservableObject {
 
     /// Native on-device voice (STT in, TTS out).
     let speech = SpeechManager()
+
+    /// Coarse "near me" location for business lookups (city + region only).
+    let location = LocationManager()
 
     private let api: SpeakeasyAPI
     let store: AppStore
@@ -64,6 +66,9 @@ final class SessionViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] message in self?.errorMessage = message }
             .store(in: &cancellables)
+
+        // Ask for a coarse location up front so "a dentist near me" can be looked up.
+        location.requestIfNeeded()
     }
 
     // MARK: Voice input (press-to-talk)
@@ -104,24 +109,26 @@ final class SessionViewModel: ObservableObject {
 
     // MARK: Intents
 
-    /// Submit a goal (typed, or transcribed from voice). Both rejoin here.
+    /// Submit a goal (typed, or transcribed from voice). Both rejoin here. The
+    /// backend infers the mode (book / compare / discover) and looks up the
+    /// number(s) — unless the user pinned a specific number from Contacts.
     func submitGoal(_ text: String) {
         let goal = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !goal.isEmpty else { return }
-        // Discover only applies to a single place; comparison always books.
-        let intent = (!compareMode && discoverMode) ? "discover" : "book"
-        launch(goal: goal, intent: intent)
+        launch(goal: goal)
     }
 
-    /// Compose the full request (facts + preferences + calendar availability) and run.
-    private func launch(goal: String, intent: String) {
+    /// Compose the full request (facts + preferences + calendar availability + a
+    /// coarse location for lookups) and run.
+    private func launch(goal: String) {
         guard !isSubmitting else { return }   // ignore a second Send while one is in flight
         isSubmitting = true
         lastGoalText = goal   // single source of truth — retry/amend build on this
-        let numbers: [String]? = compareMode ? compareNumbers : (targetNumber.map { [$0] })
-        let facts = compareMode ? nil : store.details.asFacts        // share saved details on single calls
-        let prefs = compareMode ? nil : store.details.asPreferences  // front-loaded preferences
-        let wantAvailability = !compareMode && store.useCalendarAvailability
+        let numbers: [String]? = targetNumber.map { [$0] }   // only when pinned from Contacts
+        let facts = store.details.asFacts            // always share saved details now
+        let prefs = store.details.asPreferences      // front-loaded preferences
+        let wantAvailability = store.useCalendarAvailability
+        let place = location.placemark
         run {
             self.phase = .collecting
             self.activity = []
@@ -131,13 +138,13 @@ final class SessionViewModel: ObservableObject {
             let req = GoalRequest(
                 text: goal, lang: self.language.code,
                 numbers: numbers,
-                facts: (facts?.isEmpty ?? true) ? nil : facts,
-                preferences: prefs, availability: availability, intent: intent)
+                facts: facts.isEmpty ? nil : facts,
+                preferences: prefs, availability: availability, location: place)
             let u = try await self.api.submitGoal(sessionId: sid, req)
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
             self.isSubmitting = false
-            self.narrate(u.readbackUserLang)   // read the goal back (unless text-forward)
+            self.announce(u.readbackUserLang)   // show + read the goal back (unless text-forward)
         }
     }
 
@@ -148,8 +155,7 @@ final class SessionViewModel: ObservableObject {
         let number = targetNumber
         reset()
         targetNumber = number
-        discoverMode = false
-        launch(goal: goal, intent: "book")
+        launch(goal: goal)
     }
 
     /// Refine the request before calling (editable brief) — re-runs with the note.
@@ -188,9 +194,26 @@ final class SessionViewModel: ObservableObject {
     func bookWinner(number: String) {
         let goal = lastGoalText.isEmpty ? "Book an appointment" : "Book an appointment. \(lastGoalText)"
         reset()
-        compareMode = false
         targetNumber = number
         submitGoal(goal)
+    }
+
+    /// Surface an agent answer to the user in BOTH channels: on-screen text (in
+    /// their language) and spoken audio. Text always shows; audio respects
+    /// text-forward (Deaf/HoH) mode.
+    private func announce(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        assistantMessage = trimmed
+        narrate(trimmed)
+    }
+
+    /// Replay the assistant's latest message aloud (an explicit tap speaks even in
+    /// text-forward mode).
+    func replayAssistant() {
+        guard let msg = assistantMessage else { return }
+        speech.stopSpeaking()
+        speech.speak(msg, localeId: language.ttsLocale)
     }
 
     /// Speak only when not in text-forward (Deaf/HoH) mode.
@@ -285,9 +308,11 @@ final class SessionViewModel: ObservableObject {
                 }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
-            // Narrate the outcome aloud and save to history.
+            // Surface the outcome as text (home screen) + audio, and save to history.
             await MainActor.run {
                 if self.phase == .done {
+                    self.assistantMessage = self.winnerReason
+                        ?? self.result?.outcomeUserLang ?? self.result?.outcome
                     self.speakResult(force: false)   // auto-narrate (respects text-forward)
                     self.saveToHistory()
                 }

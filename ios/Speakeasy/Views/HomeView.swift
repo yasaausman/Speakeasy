@@ -106,29 +106,34 @@ struct HomeView: View {
                     .animation(.easeInOut, value: isEmpty)
                 }
 
-                VStack(spacing: 0) {
-                    Toggle(isOn: $vm.compareMode) {
-                        Label("Compare 3 places, pick the best", systemImage: "trophy")
-                            .font(.subheadline.weight(.medium))
+                // The assistant's latest answer — in the user's language, and read
+                // aloud (tap the speaker to replay). Replaces the old mode toggles;
+                // the backend now infers compare / availability from the goal.
+                if let msg = vm.assistantMessage {
+                    HStack(alignment: .top, spacing: Theme.Space.xs) {
+                        Image(systemName: "quote.bubble.fill")
+                            .font(.title3)
+                            .foregroundStyle(Theme.primary)
+                            .accessibilityHidden(true)
+                        Text(msg)
+                            .font(.subheadline)
                             .foregroundStyle(Theme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button { vm.replayAssistant() } label: {
+                            Image(systemName: "speaker.wave.2.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.primary)
+                                .frame(width: 34, height: 34)
+                                .background(Circle().fill(Theme.primary.opacity(0.12)))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Play aloud")
                     }
-                    .tint(Theme.primary)
-                    .padding(.vertical, 12).padding(.horizontal, 18)
-                    .onChange(of: vm.compareMode) { _, on in if on { vm.discoverMode = false } }
-
-                    Rectangle().fill(Theme.hairline).frame(height: 1).padding(.leading, 18)
-
-                    Toggle(isOn: $vm.discoverMode) {
-                        Label("Check availability first, then pick", systemImage: "clock.badge.checkmark")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(vm.compareMode ? Theme.inkSecondary : Theme.ink)
-                    }
-                    .tint(Theme.primary)
-                    .disabled(vm.compareMode)
-                    .padding(.vertical, 12).padding(.horizontal, 18)
-                    .onChange(of: vm.discoverMode) { _, on in if on { vm.compareMode = false } }
+                    .padding(.vertical, 14).padding(.horizontal, 16)
+                    .softCard(Theme.surface)
+                    .transition(.opacity)
                 }
-                .softCard(Theme.surface)
 
                 if let err = vm.errorMessage {
                     ErrorBanner(message: err) {
@@ -139,11 +144,12 @@ struct HomeView: View {
                 }
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: vm.errorMessage)
+            .animation(.easeInOut, value: vm.assistantMessage)
         }
         .padding(.horizontal, Theme.Space.l)
         .padding(.bottom, Theme.Space.m)
         // Tap any empty area to dismiss the keyboard (sits behind the controls,
-        // so the orb, toggles, and text field still get their taps first).
+        // so the orb, cards, and text field still get their taps first).
         .background(
             Color.clear
                 .contentShape(Rectangle())
@@ -175,14 +181,20 @@ struct HomeView: View {
                     .padding(Theme.Space.l).frame(maxWidth: .infinity)
                     .softCard(Theme.surface)
 
-                if vm.compareMode {
-                    Label(u.targetNumber, systemImage: "phone.fill")
-                        .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
+                if (u.businesses?.count ?? 0) > 1 {
+                    // Compare mode — the places we'll call, so a wrong lookup is visible.
+                    VStack(spacing: 6) {
+                        ForEach(u.businesses ?? []) { biz in
+                            Label("\(biz.name) · \(biz.phone)", systemImage: "phone.fill")
+                                .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
                 } else {
                     Button { showNumberSheet = true } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "phone.fill")
-                            Text(u.targetNumber)
+                            Text(u.businesses?.first.map { "\($0.name) · \($0.phone)" } ?? u.targetNumber)
                             Image(systemName: "pencil").font(.caption2)
                         }
                         .font(.subheadline.weight(.medium)).foregroundStyle(Theme.primary)

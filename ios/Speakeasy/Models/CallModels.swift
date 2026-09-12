@@ -39,6 +39,16 @@ struct GoalUnderstanding: Codable, Equatable {
     let understoodGoalEnglish: String
     let readbackUserLang: String
     let targetNumber: String
+    /// Present when the backend looked up the number(s) — shown at the confirm gate.
+    var businesses: [FoundBusiness]? = nil
+}
+
+/// A business the backend found for the goal (name + number + address).
+struct FoundBusiness: Codable, Equatable, Identifiable {
+    var id: String { phone }
+    let name: String
+    let phone: String
+    var address: String? = nil
 }
 
 // MARK: - Normalized call result (mirrors server/calle/types.ts::CallResult)
