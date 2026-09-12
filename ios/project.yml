@@ -38,3 +38,28 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
+  # A lightweight UI smoke test: the app launches and the Home screen renders its
+  # greeting and starter chips. Runs via `xcodebuild test` on a booted simulator.
+  SpeakeasyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SpeakeasyUITests
+    dependencies:
+      - target: Speakeasy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.speakeasy.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_VERSION: "5.0"
+schemes:
+  Speakeasy:
+    build:
+      targets:
+        Speakeasy: all
+        SpeakeasyUITests: [test]
+    test:
+      targets:
+        - SpeakeasyUITests
+    run:
+      config: Debug

@@ -30,6 +30,7 @@ struct HomeView: View {
                 } else if let r = vm.result {
                     ResultCardView(result: r, store: vm.store,
                                    phoneNumber: vm.understanding?.targetNumber,
+                                   lang: vm.language.code,
                                    onReplay: { vm.toggleNarration() }, isSpeaking: vm.speech.isSpeaking,
                                    onRetry: vm.retry,
                                    onAnswerGap: { vm.answerGap($0, value: $1) }, onDone: vm.reset)
@@ -45,7 +46,9 @@ struct HomeView: View {
         VStack(spacing: Theme.Space.l) {
             Spacer(minLength: Theme.Space.m)
 
-            VoiceOrb(isListening: vm.speech.isListening, hasError: vm.errorMessage != nil)
+            VoiceOrb(isListening: vm.speech.isListening,
+                     hasError: vm.errorMessage != nil,
+                     level: CGFloat(vm.speech.audioLevel))
                 .contentShape(Circle())
                 .gesture(
                     DragGesture(minimumDistance: 0)
@@ -191,7 +194,7 @@ struct HomeView: View {
                 Circle().fill(Theme.primary.opacity(0.14)).frame(width: 84, height: 84)
                 Image(systemName: "quote.bubble.fill").font(.system(size: 34, weight: .semibold)).foregroundStyle(Theme.primary)
             }
-            Text("Did I get this right?").font(.title.weight(.bold)).foregroundStyle(Theme.ink)
+            Text(L.t(.confirmTitle, vm.language.code)).font(.title.weight(.bold)).foregroundStyle(Theme.ink)
 
             if let u = vm.understanding {
                 Text(u.readbackUserLang)
@@ -245,7 +248,7 @@ struct HomeView: View {
                     .padding(.horizontal, Theme.Space.xs)
                 } else {
                     Button { showNote = true } label: {
-                        Label("Add a detail", systemImage: "plus.circle")
+                        Label(L.t(.addDetail, vm.language.code), systemImage: "plus.circle")
                             .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
                     }
                 }
@@ -254,9 +257,9 @@ struct HomeView: View {
             Spacer()
 
             HStack(spacing: Theme.Space.s) {
-                Button("Edit") { vm.reject() }.buttonStyle(SoftPill())
+                Button(L.t(.edit, vm.language.code)) { vm.reject() }.buttonStyle(SoftPill())
                 Button { Haptics.confirm(); vm.confirmAndCall() } label: {
-                    Label("Yes, call", systemImage: "phone.arrow.up.right.fill")
+                    Label(L.t(.yesCall, vm.language.code), systemImage: "phone.arrow.up.right.fill")
                 }.buttonStyle(PrimaryPill())
             }
         }
@@ -279,8 +282,8 @@ struct HomeView: View {
                     Image(systemName: "phone.connection.fill").font(.title3).foregroundStyle(Theme.primary)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("On the call").font(.headline).foregroundStyle(Theme.ink)
-                    Text(vm.statusLine ?? "Connecting…").font(.subheadline).foregroundStyle(Theme.inkSecondary)
+                    Text(L.t(.onTheCall, vm.language.code)).font(.headline).foregroundStyle(Theme.ink)
+                    Text(vm.statusLine ?? L.t(.connecting, vm.language.code)).font(.subheadline).foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
                 ProgressView().tint(Theme.primary)

@@ -191,3 +191,38 @@ test("guardrail: front-loaded facts never invite the agent to guess missing info
   assert.match(planInput, /do not guess/i, "the agent is told not to guess unknown details");
   assert.match(planInput, /Medicaid/, "known facts are shared so the rep's question is answerable");
 });
+
+// ── Error paths (fail loudly and safely, never a silent call) ─────────────────
+
+test("error: submitting a goal on an unknown session throws", async () => {
+  const orch = makeOrchestrator();
+  await assert.rejects(
+    () => orch.submitGoal("no-such-session", "book a haircut", "en", { numbers: ["+13120001111"] }),
+    /unknown session/i,
+  );
+});
+
+test("error: confirming before a readback exists throws (no call can slip out)", () => {
+  const orch = makeOrchestrator();
+  const session = orch.createSession("en");
+  // No submitGoal → still in `collecting`, not `confirming`.
+  assert.throws(() => orch.confirmAndCall(session.id), /not awaiting confirmation/i);
+});
+
+test("error: a lookup that finds no number surfaces a friendly, actionable message", async () => {
+  // A search double that returns nothing (as grounded search can when it can't verify).
+  const emptySearch = { name: "empty(business)", async find() { return []; } };
+  const orch = new Orchestrator({
+    calle: new CalleClient({ transport: new FakeCalleTransport(silent), poll: { firstDelayMs: 5, intervalMs: 5, maxWaitMs: 4000 }, log: silent }),
+    translator: new MockTranslator(),
+    ranker: new HeuristicRanker(),
+    slotExtractor: new NaiveSlotExtractor(),
+    search: emptySearch,
+    classifier: new HeuristicIntentClassifier(),
+  });
+  const session = orch.createSession("en");
+  await assert.rejects(
+    () => orch.submitGoal(session.id, "book a haircut", "en", { location: "Nowhere" }),
+    /couldn't find a phone number/i,
+  );
+});

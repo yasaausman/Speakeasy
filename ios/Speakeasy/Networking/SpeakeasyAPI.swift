@@ -112,15 +112,26 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
 
 // MARK: - Live (Phase M1+: talks to the Node backend)
 struct LiveSpeakeasyAPI: SpeakeasyAPI {
+    /// Where the Node backend lives. Resolved at runtime so it never needs a Swift
+    /// edit: set `SPEAKEASY_BACKEND_URL` (scheme env var) or the `SpeakeasyBackendURL`
+    /// Info.plist key to override; otherwise fall back to the per-platform default.
+    var baseURL: URL = LiveSpeakeasyAPI.resolveBaseURL()
+
+    static func resolveBaseURL() -> URL {
+        if let s = ProcessInfo.processInfo.environment["SPEAKEASY_BACKEND_URL"],
+           let u = URL(string: s.trimmingCharacters(in: .whitespaces)), !s.isEmpty { return u }
+        if let s = Bundle.main.object(forInfoDictionaryKey: "SpeakeasyBackendURL") as? String,
+           !s.trimmingCharacters(in: .whitespaces).isEmpty,
+           let u = URL(string: s.trimmingCharacters(in: .whitespaces)) { return u }
 #if targetEnvironment(simulator)
-    /// The simulator shares the Mac's network, so localhost is the backend.
-    var baseURL: URL = URL(string: "http://localhost:3000")!
+        // The simulator shares the Mac's network, so localhost is the backend.
+        return URL(string: "http://localhost:3000")!
 #else
-    /// On a physical device "localhost" is the phone itself, so point at the Mac's
-    /// LAN IP (same Wi-Fi). Update this if your Mac's address changes —
-    /// System Settings → Wi-Fi → Details, or `ipconfig getifaddr en0`.
-    var baseURL: URL = URL(string: "http://10.213.203.101:3000")!
+        // On a physical device "localhost" is the phone itself, so point at the Mac's
+        // LAN IP (same Wi-Fi). Prefer overriding via Info.plist / env over editing this.
+        return URL(string: "http://10.213.203.101:3000")!
 #endif
+    }
 
     func createSession(lang: String) async throws -> String {
         struct Body: Codable { let lang: String }

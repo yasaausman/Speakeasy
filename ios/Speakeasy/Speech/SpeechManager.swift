@@ -14,6 +14,8 @@ final class SpeechManager: NSObject, ObservableObject {
     @Published var isSpeaking = false
     @Published var partialText = ""
     @Published var lastError: String?
+    /// Normalized 0…1 mic loudness while listening — drives the audio-reactive orb.
+    @Published var audioLevel: Float = 0
 
     private let synthesizer = AVSpeechSynthesizer()
     private var recognizer: SFSpeechRecognizer?
@@ -72,6 +74,7 @@ final class SpeechManager: NSObject, ObservableObject {
         let format = input.outputFormat(forBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             self?.request?.append(buffer)
+            self?.publishLevel(from: buffer)
         }
         audioEngine.prepare()
         do {
@@ -120,7 +123,27 @@ final class SpeechManager: NSObject, ObservableObject {
         task = nil
         request = nil
         isListening = false
+        audioLevel = 0
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// Turn a raw PCM buffer into a smoothed 0…1 loudness for the orb. Runs on the
+    /// audio thread; the RMS→dB→normalized mapping is cheap, and we hop to the main
+    /// actor only to publish. Kept off the recognition path entirely.
+    nonisolated private func publishLevel(from buffer: AVAudioPCMBuffer) {
+        guard let channel = buffer.floatChannelData?[0] else { return }
+        let n = Int(buffer.frameLength)
+        guard n > 0 else { return }
+        var sum: Float = 0
+        for i in 0..<n { let s = channel[i]; sum += s * s }
+        let rms = (sum / Float(n)).squareRoot()
+        // Map ~ -50 dB (quiet room) … -10 dB (speaking) onto 0…1.
+        let db = 20 * log10(max(rms, 1e-7))
+        let level = max(0, min(1, (db + 50) / 40))
+        Task { @MainActor in
+            // Ease toward the new level so the orb pulses smoothly, not jitterily.
+            self.audioLevel += (level - self.audioLevel) * 0.35
+        }
     }
 
     // MARK: - Text to speech

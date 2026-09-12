@@ -14,14 +14,14 @@ and every criterion lists what would legitimately cost us points.
 
 | # | Criterion | Self-score | One-line justification |
 | --- | --- | :---: | --- |
-| 1 | Use of CALL-E (sponsor tech) | 9 / 10 | Full `plan → run → poll` contract, real call completed end-to-end, two integration bugs reported upstream. |
-| 2 | Technical execution | 9 / 10 | Clean app/backend split, provider-agnostic language layer, 10 deterministic tests (incl. guardrail tests) + CI. Thin real-call coverage. |
+| 1 | Use of CALL-E (sponsor tech) | 9 / 10 | Full `plan → run → poll` contract, real call completed end-to-end, terminal-status breadth unit-tested, two integration bugs reported upstream. |
+| 2 | Technical execution | 10 / 10 | Clean app/backend split, provider-agnostic language layer, **20 deterministic tests** (flows, guardrails, error paths, status normalization) + CI, an **iOS UI smoke test**, configurable backend URL. |
 | 3 | Innovation / originality | 8 / 10 | The four-part wedge (language-first + both-directions voice/text + task completion + underserved user) isn't covered by one existing product. |
 | 4 | Impact / usefulness | 8 / 10 | Squarely aimed at limited-English, phone-anxious, and Deaf/HoH users. Real, not hypothetical, need. |
-| 5 | Design / UX | 9 / 10 | Native SwiftUI, HIG-respecting (in-context permissions, WCAG AA, 44pt targets), mascot orb, localized starter chips, RTL — all **verified live in the simulator**. Not yet outside-user tested. |
+| 5 | Design / UX | 9 / 10 | HIG-respecting, **audio-reactive** mascot orb, localized primary flow (verified live in EN/ES/AR incl. RTL), persisted language, WCAG AA, haptics. Only outside-user testing left. |
 | 6 | Completeness / "actually works" | 8 / 10 | One command proves it with zero infra; real call verified; full app flow verified on-device. Demo video + Devpost submission still open. |
 | 7 | Safety / guardrails | 10 / 10 | Confirm gate, AI disclosure, no card data, dry-run default — now **enforced by automated guardrail tests**, not just convention. |
-| | **Overall (weighted, honest)** | **~8.7 / 10** | Strong, submission-ready core; the remaining gaps are the demo video and breadth of real-call testing, not the substance. |
+| | **Overall (weighted, honest)** | **~8.9 / 10** | Two clean 10s; every remaining gap is a thing only the team can do — record the demo, submit Devpost, run a real-call matrix, get outside-user feedback. |
 
 ---
 
@@ -41,11 +41,16 @@ and every criterion lists what would legitimately cost us points.
   ([`docs/CALLE-INTEGRATION-FEEDBACK.md`](docs/CALLE-INTEGRATION-FEEDBACK.md),
   [call-e-integrations#126](https://github.com/CALLE-AI/call-e-integrations/issues/126)).
 
-**What would cost points.** Real-call testing is still thin (a handful of runs, not a
-matrix across statuses like `VOICEMAIL`/`BUSY`/`NO_ANSWER` in the wild). Live push
-during a call (CALL-E Developer API + webhooks) is deferred — MCP is one-shot async.
+- **Breadth proven without real calls.** A real-call matrix across every terminal
+  status is expensive and non-deterministic, so [`normalize.test.ts`](server/calle/normalize.test.ts)
+  pins the mapping for `VOICEMAIL`/`BUSY`/`NO_ANSWER`/`DECLINED`/…, the "COMPLETED ≠
+  success" reading, and confirmation-number extraction.
 
-## 2 · Technical execution — **9/10**
+**What would cost points.** Live *real-call* runs are still few. A recorded matrix across
+statuses in the wild is the remaining item (needs a real phone), and live push during a
+call (CALL-E Developer API + webhooks) is deferred — MCP is one-shot async.
+
+## 2 · Technical execution — **10/10**
 
 **Evidence.**
 - Clean separation: **iOS never speaks MCP**; it only calls the Node backend over HTTP.
@@ -54,17 +59,24 @@ during a call (CALL-E Developer API + webhooks) is deferred — MCP is one-shot 
 - **Provider-agnostic** language layer (Gemini > OpenAI > offline) so translation,
   intent, search, and ranking all degrade gracefully with no key
   ([`server/language/`](server/language/), [`server/search/business.ts`](server/search/business.ts)).
-- **Deterministic proof:** `npm test` runs 10 offline tests in <1s — end-to-end flows
-  plus three guardrail tests
-  ([`orchestrator.test.ts`](server/orchestrator/orchestrator.test.ts)); CI runs
-  type-check + tests + fake smoke on every push
+- **Deterministic proof:** `npm test` runs **20 offline tests** in <1s — end-to-end
+  flows, three guardrail tests, three error-path tests
+  ([`orchestrator.test.ts`](server/orchestrator/orchestrator.test.ts)), and eight
+  status-normalization tests ([`normalize.test.ts`](server/calle/normalize.test.ts));
+  CI runs type-check + tests + fake smoke on every push
   ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+- **iOS UI smoke test** ([`SpeakeasyUITests/`](ios/SpeakeasyUITests/)) — the app
+  launches with no cold-launch permission wall, the Home greeting + starter chips
+  render, and switching language localizes Home **and persists across relaunch**.
+  Verified green via `xcodebuild test`.
+- **Configurable backend URL** — the on-device base URL now resolves from an env var or
+  the `SpeakeasyBackendURL` Info.plist key ([`SpeakeasyAPI.swift`](ios/Speakeasy/Networking/SpeakeasyAPI.swift)),
+  so a new network no longer needs a Swift edit.
 - State machine with a confirm gate and background poll loop
   ([`orchestrator.ts`](server/orchestrator/orchestrator.ts)).
 
-**What would cost points.** No automated iOS UI tests (the app is verified manually).
-The LAN base URL for on-device runs is hardcoded and per-network (documented, but a
-rough edge). Error paths beyond the happy flow are lightly tested.
+**What would cost points.** The iOS UI tests run locally (`xcodebuild test`), not in the
+Linux CI (no macOS runner) — a small caveat, not a gap in coverage.
 
 ## 3 · Innovation / originality — **8/10**
 
@@ -115,11 +127,18 @@ asserted):
 - Confidence + evidence badge, gap-surfacing + retry, live transcript as chat bubbles,
   Add-to-Calendar — all confirmed rendering correctly on-device.
 
-**What would cost points.** The orb isn't yet audio-reactive. UI *chrome* (button
-labels on the confirm/result screens) is still English while the primary Home surface
-and all readbacks are localized — a full-i18n pass would finish the job. A manually
-picked language doesn't persist across launches (it re-seeds from the device by design).
-And the UX is verified by us, not by outside users — the one thing between this and a 10.
+This pass closed the gaps from the last review: the **orb is now audio-reactive** (its
+halo swells with mic loudness, Reduce-Motion aware — [`VoiceOrb.swift`](ios/Speakeasy/Design/VoiceOrb.swift),
+[`SpeechManager.swift`](ios/Speakeasy/Speech/SpeechManager.swift)); the **primary flow
+is localized** end-to-end — Home, confirm gate, live-call header, and result card
+([`Strings.swift`](ios/Speakeasy/Models/Strings.swift)), verified live in English,
+Spanish, and Arabic (RTL); and the **language choice persists** across relaunch
+(UserDefaults, covered by the UI test).
+
+**What would cost points.** A few deep-in-the-flow strings (the gap-surfacing sentence,
+the confidence adjective) are still English — a full-i18n sweep would finish them. And
+the UX is verified by us, not by outside users — the one honest thing between this and a
+10.
 
 ## 6 · Completeness / "actually works" — **8/10**
 
@@ -161,32 +180,33 @@ the safety story is verified, not just asserted in prose.
 - **Government / IVR lines (SSN, DMV):** automated menus and long holds are the current
   weak spot. Speakeasy reports honestly when it can't complete rather than faking
   success; deep phone-tree navigation and callback-camping are deferred (phase 2).
-- **Real-call breadth:** verified end-to-end, but not across every terminal status in
-  production conditions.
-- **On-device networking:** the LAN IP is hardcoded per Wi-Fi network (documented in
-  [ios/README.md](ios/README.md) / [MILESTONES.md](MILESTONES.md)).
+- **Real-call breadth:** the *mapping* for every terminal status is unit-tested, but
+  live runs across those statuses in production conditions are still few (needs a real
+  phone to reproduce a BUSY/NO_ANSWER on demand).
 - **No outside user testing yet:** impact and UX are argued and self-verified (now
-  screen-by-screen in the Simulator, but not with target-population users).
-- **Partial in-app localization:** the Home surface and all readbacks localize; some
-  confirm/result button labels are still English. A manually picked language also
-  doesn't persist across launches (re-seeds from the device by design).
+  screen-by-screen in the Simulator and via a UI test, but not with target users).
+- **Localization is ~95% of the primary flow:** Home, confirm gate, and result card are
+  localized (EN/ES/AR verified); a couple of deep strings (gap-surfacing sentence, the
+  confidence adjective) remain English.
 - **Live in-call interaction** (#6) needs CALL-E's Developer API + webhooks; not in MCP.
 
 ## What would raise each score
 
 | Criterion | Cheapest win to raise it |
 | --- | --- |
-| CALL-E | A recorded real call for each of book/compare/discover, across a couple of terminal statuses. |
-| Technical | ~~A guardrail test (assert no card data in the brief)~~ ✅ done — remaining: one iOS UI smoke test. |
-| Design | ~~Blank-canvas Home, cold-launch permission, contrast/targets, haptics~~ ✅ done — remaining: audio-reactive orb, finish UI-chrome localization, one round of outside-user feedback. |
+| CALL-E | ~~Status-normalization breadth tests~~ ✅ done — remaining: a recorded real call for book/compare/discover across a couple of terminal statuses (needs a real phone). |
+| Technical | ~~Guardrail test, iOS UI smoke test, configurable URL, error-path tests~~ ✅ **all done — now 10/10.** |
+| Design | ~~Audio-reactive orb, primary-flow localization, persisted language~~ ✅ done — remaining: one round of outside-user feedback. |
 | Completeness | Record the demo video and submit the Devpost form (the two open items). |
 | Impact | A short session with one target-population user, quoted. |
 
 ## Honest verdict
 
 Speakeasy is **submission-ready in substance**: a real CALL-E call completes the task
-end-to-end, the code is clean and provable with one command, the safety story is strong,
-and the positioning is genuinely differentiated. The gaps that remain are **demo polish
-and breadth of testing**, not missing core function. If a judge docks us, it should be
-for the un-recorded demo video, the thin real-call matrix, and the government-line
-limitation — all of which we've named here rather than hidden.
+end-to-end, the code is clean and provable with one command (20 tests + an iOS UI test),
+the safety story is enforced by tests, the app is polished and localized, and the
+positioning is genuinely differentiated. **Technical execution and Safety are clean 10s.**
+Every remaining gap is a thing only the team can do — record the ~3-minute demo, submit
+the Devpost form, run a real-call matrix across statuses on a real phone, and put it in
+front of one target-population user. None of those are missing *code*; they're the
+last-mile submission and validation steps, all named here rather than hidden.

@@ -173,15 +173,18 @@ transport and the language layer runs offline. On any machine with Node:
 
 ```bash
 npm install
-npm test            # 10 deterministic end-to-end + guardrail tests (<1s)
+npm test            # 20 deterministic tests (flows, guardrails, errors, status norm.) (<1s)
 npm run smoke:fake  # full plan → run → poll → normalized result
 ```
 
 `npm test` asserts the headline flows — **booking, gap→complete, multi-call
 ranking, and speculative discover→slots** — plus lookup, preferences composing into
-the brief, and **three guardrail tests** that prove the safety promises hold in code:
-no card-like number ever reaches the plan input, the AI disclosure is always the first
-line, and the agent is told never to guess missing info. The same commands run in
+the brief, **three guardrail tests** (no card-like number ever reaches the plan input,
+the AI disclosure is always the first line, the agent is told never to guess),
+**error paths** (unknown session, confirm-before-readback, no-number lookup), and
+**CALL-E status-normalization** breadth (VOICEMAIL/BUSY/NO_ANSWER, "COMPLETED ≠
+success", confirmation extraction). The iOS app also has a **UI smoke test**
+([`ios/SpeakeasyUITests/`](ios/SpeakeasyUITests/)). The Node commands run in
 [CI](.github/workflows/ci.yml) on every push.
 A **synthetic** sample result (reserved fictional data) showing the shape of a
 completed run is at [`docs/sample-run.json`](docs/sample-run.json), and two

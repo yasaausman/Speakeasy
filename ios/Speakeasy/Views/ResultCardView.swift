@@ -6,6 +6,7 @@ struct ResultCardView: View {
     let result: CallResult
     @ObservedObject var store: AppStore
     var phoneNumber: String?
+    var lang: String = "en"
     var onReplay: () -> Void
     var isSpeaking: Bool = false
     var onRetry: () -> Void
@@ -89,7 +90,7 @@ struct ResultCardView: View {
 
                     if !result.confirmationNumbers.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Confirmation")
+                            Text(L.t(.confirmation, lang))
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(Theme.inkSecondary)
                                 .textCase(.uppercase)
@@ -103,7 +104,7 @@ struct ResultCardView: View {
 
                     HStack(spacing: Theme.Space.s) {
                         Button(action: onReplay) {
-                            Label(isSpeaking ? "Stop" : "Play narration",
+                            Label(isSpeaking ? L.t(.stop, lang) : L.t(.play, lang),
                                   systemImage: isSpeaking ? "stop.fill" : "speaker.wave.2.fill")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Theme.primary)
@@ -146,9 +147,9 @@ struct ResultCardView: View {
 
                 HStack(spacing: Theme.Space.s) {
                     Button { onRetry() } label: {
-                        Label("Try again", systemImage: "arrow.clockwise")
+                        Label(L.t(.tryAgain, lang), systemImage: "arrow.clockwise")
                     }.buttonStyle(SoftPill())
-                    Button("New request", action: onDone).buttonStyle(PrimaryPill())
+                    Button(L.t(.newRequest, lang), action: onDone).buttonStyle(PrimaryPill())
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -174,7 +175,11 @@ struct ResultCardView: View {
     }
 
     private var calLabel: String {
-        switch calState { case .added: return "Added"; case .denied: return "Calendar off"; case .idle: return "Add to Calendar" }
+        switch calState {
+        case .added: return L.t(.added, lang)
+        case .denied: return "Calendar off"
+        case .idle: return L.t(.addToCalendar, lang)
+        }
     }
     private var calIcon: String {
         switch calState { case .added: return "checkmark"; case .denied: return "calendar.badge.exclamationmark"; case .idle: return "calendar.badge.plus" }
@@ -202,12 +207,12 @@ struct ResultCardView: View {
 
     private var statusTitle: String {
         switch result.status {
-        case .completed: return "Done"
-        case .no_answer: return "No answer"
-        case .voicemail: return "Voicemail"
-        case .busy: return "Line busy"
-        case .declined: return "Declined"
-        default: return "Couldn't finish"
+        case .completed: return L.t(.statusDone, lang)
+        case .no_answer: return L.t(.statusNoAnswer, lang)
+        case .voicemail: return L.t(.statusVoicemail, lang)
+        case .busy: return L.t(.statusBusy, lang)
+        case .declined: return L.t(.statusDeclined, lang)
+        default: return L.t(.statusFailed, lang)
         }
     }
     private var statusIcon: String {

@@ -8,9 +8,18 @@ struct VoiceOrb: View {
     /// True when a listen attempt just failed (mic/speech couldn't start) — the
     /// orb goes amber to match the error banner.
     var hasError: Bool = false
+    /// Live mic loudness (0…1) while listening — the orb's halo swells with the
+    /// user's voice. Ignored when Reduce Motion is on.
+    var level: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var breathe = false
     @State private var blink = false
+
+    /// How much the halo grows with the voice (0 when not listening / reduced motion).
+    private var reactive: CGFloat {
+        guard isListening, !reduceMotion else { return 0 }
+        return min(max(level, 0), 1)
+    }
 
     private var tint: Color {
         if hasError { return Theme.warning }
@@ -26,11 +35,11 @@ struct VoiceOrb: View {
             Circle()
                 .fill(tint.opacity(0.12))
                 .frame(width: 240, height: 240)
-                .scaleEffect(breathe && !reduceMotion ? 1.08 : 0.92)
+                .scaleEffect((breathe && !reduceMotion ? 1.08 : 0.92) + reactive * 0.28)
             Circle()
                 .fill(tint.opacity(0.20))
                 .frame(width: 180, height: 180)
-                .scaleEffect(breathe && !reduceMotion ? 1.04 : 0.96)
+                .scaleEffect((breathe && !reduceMotion ? 1.04 : 0.96) + reactive * 0.18)
 
             Circle()
                 .fill(tint) // Solid playful color
@@ -83,6 +92,7 @@ struct VoiceOrb: View {
             reduceMotion ? nil : .spring(response: 1.2, dampingFraction: 0.5, blendDuration: 1.0).repeatForever(autoreverses: true),
             value: breathe
         )
+        .animation(.easeOut(duration: 0.12), value: reactive)
         .onAppear { breathe = true }
         .accessibilityLabel(isListening ? "Listening" : (hasError ? "Didn't catch that" : "Tap and hold to speak"))
     }

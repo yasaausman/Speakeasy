@@ -128,10 +128,34 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 - [ ] **#6 Real-time "tap a slot" live push** — *deferred (phase 2)*: needs CALL-E's
   Developer API + webhooks; MCP is one-shot async with no live hold.
 
+## UX polish & hardening (10/10 push)
+
+- [x] **Starter chips + localized greeting** — the Home screen leads with tappable,
+  localized example goals (haircut / takeout / clinic / dentist), fixing the
+  blank-canvas problem. Verified live in EN/ES/AR.
+- [x] **In-context location** — the permission prompt fires on the first "near me"
+  goal, not on cold launch (HIG). Removes the intrusive launch prompt.
+- [x] **Audio-reactive orb** — the orb's halo swells with mic loudness while listening
+  (RMS→dB→normalized in `SpeechManager`; Reduce-Motion aware).
+- [x] **Primary-flow localization** — Home, confirm gate, live-call header, and result
+  card localize into the app's languages (`Models/Strings.swift`), English fallback.
+- [x] **Language persists** across relaunch (UserDefaults), covered by a UI test.
+- [x] **Accessibility + haptics** — secondary text tuned to WCAG AA, tap targets ≥44pt,
+  light/medium/success haptics on chip tap / "Yes, call" / a booked result.
+- [x] **Depth** — soft background gradient instead of flat gray.
+- [x] **Configurable backend URL** — env var / `SpeakeasyBackendURL` Info.plist key;
+  no Swift edit per network.
+- [x] **iOS UI smoke test** (`ios/SpeakeasyUITests/`) — launch + Home render + language
+  switch/persist; green via `xcodebuild test`.
+- [x] **CALL-E status-normalization tests** — breadth for VOICEMAIL/BUSY/NO_ANSWER/…,
+  "COMPLETED ≠ success", and confirmation extraction (`server/calle/normalize.test.ts`).
+- [x] **Server error-path tests** — unknown session, confirm-before-readback, and a
+  no-number lookup surfacing a friendly message.
+
 ## Hackathon build-proof
 
-- [x] **Deterministic tests** — `npm test`: 5 offline end-to-end flow tests
-  (booking, gap→complete, multi-call ranking, discover→slots, preferences→brief).
+- [x] **Deterministic tests** — `npm test`: 20 offline tests (end-to-end flows,
+  guardrails, error paths, and CALL-E status normalization).
 - [x] **CI** — `.github/workflows/ci.yml` runs type-check + tests + fake smoke on
   every push (green).
 - [x] **One-command, zero-infra proof** — `npm test` and `npm run smoke:fake` need no
@@ -165,7 +189,6 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 
 ## Later / optional (deferred by choice)
 
-- [ ] **UI interactivity pass** — audio-reactive orb (react to mic amplitude),
-  animated transcript, haptics, smoother transitions. (The orb now breathes, colors
-  by state, and has a mascot face + confetti, but isn't yet audio-reactive.)
+- [x] **UI interactivity pass** — audio-reactive orb (halo swells with mic amplitude),
+  haptics, smoother transitions. (Animated transcript is the one piece still open.)
 - [ ] **#6 real-time live push** (see Smart booking loop).

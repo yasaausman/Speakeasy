@@ -34,7 +34,11 @@ final class SessionViewModel: ObservableObject {
     private(set) var lastGoalText = ""
 
     /// User-selected language (English/Spanish/Hindi/Arabic). The call stays English.
-    @Published var language: AppLanguage = .spanish
+    /// Persisted so a manual pick — or the last auto-detected language — survives
+    /// relaunch, instead of snapping back to the device default every launch.
+    @Published var language: AppLanguage = .spanish {
+        didSet { UserDefaults.standard.set(language.code, forKey: "speakeasy.language") }
+    }
     let languages = AppLanguage.all
 
     /// Native on-device voice (STT in, TTS out).
@@ -55,7 +59,13 @@ final class SessionViewModel: ObservableObject {
     init(store: AppStore, api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
         self.store = store
         self.api = api
-        self.language = AppLanguage.deviceDefault   // start in the device's language; auto-detect adjusts
+        // Restore the last-used language if the user has ever picked or spoken one;
+        // otherwise start in the device's language. (didSet doesn't fire in init.)
+        if let saved = UserDefaults.standard.string(forKey: "speakeasy.language") {
+            self.language = AppLanguage.byCode(saved)
+        } else {
+            self.language = AppLanguage.deviceDefault
+        }
 
         // The speech layer is a nested ObservableObject; SwiftUI won't see its
         // changes through `vm` on its own. Forward them so the orb and caption
