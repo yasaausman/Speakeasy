@@ -27,6 +27,18 @@ struct AppLanguage: Identifiable, Hashable {
 
     static let spanish = all[1]
     static func byCode(_ code: String) -> AppLanguage { all.first { $0.code == code } ?? all[0] }
+
+    /// Exact supported-language match, or nil (unlike byCode, which falls back to English).
+    static func supported(_ code: String) -> AppLanguage? { all.first { $0.code == code } }
+
+    /// The device's preferred language if we support it, else Spanish (the seed).
+    static var deviceDefault: AppLanguage {
+        for id in Locale.preferredLanguages {
+            let base = String(id.split(separator: "-").first ?? "")
+            if let match = supported(base) { return match }
+        }
+        return spanish
+    }
 }
 
 // MARK: - Orchestrator state machine phase

@@ -183,21 +183,31 @@ struct HomeView: View {
 
                 if (u.businesses?.count ?? 0) > 1 {
                     // Compare mode — the places we'll call, so a wrong lookup is visible.
-                    VStack(spacing: 6) {
+                    VStack(spacing: 10) {
                         ForEach(u.businesses ?? []) { biz in
-                            Label("\(biz.name) · \(biz.phone)", systemImage: "phone.fill")
-                                .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Label("\(biz.name) · \(biz.phone)", systemImage: "phone.fill")
+                                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.inkSecondary)
+                                if let addr = biz.address {
+                                    Text(addr).font(.caption).foregroundStyle(Theme.inkSecondary).padding(.leading, 22)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 } else {
-                    Button { showNumberSheet = true } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "phone.fill")
-                            Text(u.businesses?.first.map { "\($0.name) · \($0.phone)" } ?? u.targetNumber)
-                            Image(systemName: "pencil").font(.caption2)
+                    VStack(spacing: 4) {
+                        Button { showNumberSheet = true } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "phone.fill")
+                                Text(u.businesses?.first.map { "\($0.name) · \($0.phone)" } ?? u.targetNumber)
+                                Image(systemName: "pencil").font(.caption2)
+                            }
+                            .font(.subheadline.weight(.medium)).foregroundStyle(Theme.primary)
                         }
-                        .font(.subheadline.weight(.medium)).foregroundStyle(Theme.primary)
+                        if let addr = u.businesses?.first?.address {
+                            Text(addr).font(.caption).foregroundStyle(Theme.inkSecondary)
+                        }
                     }
                 }
 

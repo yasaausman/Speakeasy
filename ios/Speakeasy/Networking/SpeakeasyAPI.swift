@@ -146,7 +146,7 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
         let (data, resp) = try await URLSession.shared.data(from: baseURL.appendingPathComponent(path))
-        try Self.check(resp)
+        try Self.check(data, resp)
         return try JSONDecoder().decode(T.self, from: data)
     }
 
@@ -156,14 +156,28 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(body)
         let (data, resp) = try await URLSession.shared.data(for: req)
-        try Self.check(resp)
+        try Self.check(data, resp)
         if data.isEmpty, let empty = EmptyBody() as? T { return empty }
         return try JSONDecoder().decode(T.self, from: data)
     }
 
-    private static func check(_ resp: URLResponse) throws {
-        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
+    /// A backend error whose message we can show the user verbatim.
+    struct APIError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+    private struct ServerError: Decodable { let error: String }
+
+    /// Validate the response; on a non-2xx, surface the backend's `{ "error": … }`
+    /// message (so the user sees "I couldn't find a phone number…" instead of a
+    /// raw URLError).
+    private static func check(_ data: Data, _ resp: URLResponse) throws {
+        guard let http = resp as? HTTPURLResponse else {
+            throw APIError(message: "No response from the server.")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let serverMessage = (try? JSONDecoder().decode(ServerError.self, from: data))?.error
+            throw APIError(message: serverMessage ?? "The server returned an error (\(http.statusCode)).")
         }
     }
 }

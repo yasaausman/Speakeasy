@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import NaturalLanguage
 
 /// Drives the app's copy of the state machine and talks to the backend via the
 /// SpeakeasyAPI protocol. Swap MockSpeakeasyAPI ⇄ LiveSpeakeasyAPI with no UI change.
@@ -54,6 +55,7 @@ final class SessionViewModel: ObservableObject {
     init(store: AppStore, api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
         self.store = store
         self.api = api
+        self.language = AppLanguage.deviceDefault   // start in the device's language; auto-detect adjusts
 
         // The speech layer is a nested ObservableObject; SwiftUI won't see its
         // changes through `vm` on its own. Forward them so the orb and caption
@@ -103,8 +105,26 @@ final class SessionViewModel: ObservableObject {
         wantsListening = false
         guard speech.isListening else { return }
         let text = speech.stopListening()
+        autoDetectLanguage(from: text)   // respond in the language they actually spoke
         draftText = text
         submitGoal(text)
+    }
+
+    /// Best-effort language auto-detect from the transcript, so the readback,
+    /// translation, and voice match what the user spoke — no manual picker needed.
+    /// (Transcription itself still uses a locale, so the biggest gains are on the
+    /// user's device language and on the turn after a switch.)
+    private func autoDetectLanguage(from text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 4 else { return }   // too short to detect confidently
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString(trimmed)
+        let hypotheses = recognizer.languageHypotheses(withMaximum: 1)
+        guard let lang = recognizer.dominantLanguage, (hypotheses[lang] ?? 0) >= 0.80 else { return }
+        let base = String(lang.rawValue.split(separator: "-").first ?? "")   // "zh-Hans" → "zh"
+        if let detected = AppLanguage.supported(base), detected.code != language.code {
+            language = detected
+        }
     }
 
     // MARK: Intents
