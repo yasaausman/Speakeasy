@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml/badge.svg)](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml)
 
-**Speak or type what you need, in your language. Speakeasy makes the English phone calls, finishes the task, and tells you out loud — and in text — what happened, in your language.**
+**Speak or type what you need, in your language. Speakeasy finds the business, makes the English phone call, finishes the task, and tells you out loud — and in text — what happened, in your language.**
+
+Just say *"book me a dentist near me"* or *"order from Dave's Hot Chicken"* — Speakeasy detects your language, looks up the real number, and calls. You never dial, and you never need to know the number.
 
 Built for the [CALL-E "Your Code Is Calling"](https://devpost.com) hackathon. CALL-E places and holds the live English phone call; Speakeasy is the language bridge and the app around it — a **native iOS app** backed by a small Node service.
 
@@ -20,9 +22,10 @@ No existing product sits on all four at once:
 ```
 ┌─────────────────────────┐        ┌──────────────────────────┐        ┌──────────┐
 │  iOS app (SwiftUI)       │  HTTP  │  Node backend            │  MCP   │  CALL-E  │
-│  • tap-to-talk / type    │ ─────▶ │  • orchestrator state    │ ─────▶ │  places  │
-│  • confirm gate          │        │    machine + confirm gate│        │  the real│
-│  • live status + result  │ ◀───── │  • server/calle/ client  │ ◀───── │  call    │
+│  • tap-to-talk / type    │ ─────▶ │  • intent classify +     │ ─────▶ │  places  │
+│  • auto-detect language  │        │    business search       │        │  the real│
+│  • location ("near me")  │        │  • orchestrator + confirm│        │  call    │
+│  • confirm gate          │ ◀───── │  • server/calle/ client  │ ◀───── │          │
 │  • native STT/TTS        │  poll  │    (OAuth, plan/run/poll) │        └──────────┘
 └─────────────────────────┘        └──────────────────────────┘
 ```
@@ -53,7 +56,7 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 
 ### ✅ Done
 
-- **M0 · CALL-E proven** — `server/calle/` client (types, OAuth transport, `CalleClient`) drives `plan_call → run_call → poll get_call_run` and normalizes to a `CallResult`. `scripts/smoke-call.ts` runs the full workflow; **dry-run green**. (Real call still pending CALL-E auth.)
+- **M0 · CALL-E proven** — `server/calle/` client (types, OAuth transport, `CalleClient`) drives `plan_call → run_call → poll get_call_run` and normalizes to a `CallResult`. `scripts/smoke-call.ts` runs the full workflow; **dry-run green** and **real calls verified** (OAuth authenticated, live call placed). Flip with `CALLE_MODE=real`.
 - **M1 · iOS app shell** — SwiftUI app runs in the simulator (iPhone 17 Pro, iOS 26.5). Full loop verified on-device: goal → **confirm gate** → call → **result card**.
 - **A1 · Backend API + orchestrator** — Fastify service (`POST /api/sessions`, `/goal`, `/confirm`, `GET /api/sessions/:id`) over the `server/calle/` client + the state-machine (confirm gate, background poll loop). Verified end-to-end with the fake transport — **zero calls**.
 - **A2 · App wired to the backend** — app defaults to `LiveSpeakeasyAPI`; verified in the simulator app ⇄ backend ⇄ CALL-E (dry-run): goal → readback from the orchestrator → confirm → result card with confirmation number.
@@ -64,11 +67,18 @@ Poll cadence: first check ~60s after `run_call`, then every 5–10s until a term
 - **A4 · Live translation** — Gemini wired (`gemini-flash-latest`); verified in the app: English goal → real Spanish/Hindi/Arabic readback + narration, both directions. `.env` auto-loaded by the backend.
 - **B1 · Voice in** 🎙️ — press-and-hold mic → `SFSpeechRecognizer` (native, on-device STT) → transcript rejoins the pipeline. Permission flow verified in the simulator.
 - **B2 · Voice out** 🔊 — `AVSpeechSynthesizer` (native TTS) speaks the readback and the result in the user's language; confirmation numbers read digit-by-digit; "Play narration" replays. Verified end-to-end.
-- **C1 · Multi-call comparison** 🏆 — "Compare places" fans out N calls in parallel, Gemini ranks the outcomes for any goal ("soonest"/"cheapest"/…), and the app shows a ranked list + a highlighted best option, narrated aloud in the user's language.
+- **C1 · Multi-call comparison** 🏆 — fans out N calls in parallel, Gemini ranks the outcomes for any goal ("soonest"/"cheapest"/…), and the app shows a ranked list + a highlighted best option, narrated aloud in the user's language.
+- **Finds the number for you** 🔎 — business lookup via **Gemini Google-Search grounding** turns a goal + your location into real phone numbers. The confirm gate shows the business **name · number · address** before anything dials — so a wrong lookup never places a call. No need to know the number.
+- **Infers the mode** — the backend classifies each goal into **book** (a specific task), **compare** (a recommendation / "which is best" → call a few and rank), or **discover** (availability-first). The old mode toggles are gone; you just say what you want.
+- **Auto-detects your spoken language** — `NLLanguageRecognizer` picks up the language from the transcript, and the readback, translation, and voice follow it. Seeds from the device language; the picker still works as a manual override.
+- **Location-aware** 📍 — CoreLocation resolves a coarse "City, ST" for "near me" lookups (permission-gated; a lookup still works without it, just less targeted).
+- **Answers in text *and* audio** — every agent answer shows on-screen in your language and is spoken aloud (text-only in text-forward mode), with a play/stop replay.
+- **Safe payments** 💳 — a **Pay on pickup / delivery / card-on-file** preference the agent conveys out loud. Speakeasy **never stores or reads card numbers** — the brief explicitly forbids it.
+- **Runs on a physical iPhone** 📱 — signed with a personal team, installed over Wi-Fi, real on-device STT verified. A startup banner shows the live CALL-E mode + providers, with a loud warning when real calls are armed.
 
 ### ⬜ To do
 
-- **C2 · Polish + submit** — error/edge handling, backup demo video, submission PR to `CALLE-AI/awesome-phone-call-agents` (`apps/`).
+- **Record the ~3-minute demo video** and **submit the Devpost form.** The submission PR to [`CALLE-AI/awesome-phone-call-agents`](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/449) is already open and passing their validator.
 
 ## Layout
 
@@ -83,7 +93,9 @@ server/
     oauth.ts          Streamable-HTTP + OAuth transport (token cache under .speakeasy/)
     types.ts          CallBrief, CallResult, real tool I/O, terminal statuses
   orchestrator/       session store + state machine (confirm gate, poll loop)
-  language/           supported languages + translation layer (OpenAI or passthrough)
+  search/             business lookup (Gemini Google-Search grounding + mock)
+  language/           languages, translation, intent classifier, ranker, slots
+                      (Gemini > OpenAI > offline passthrough/heuristics)
 scripts/
   smoke-call.ts       CALL-E end-to-end smoke test (fake by default, --real to call)
 ```
@@ -132,14 +144,17 @@ reproducible integration issues we reported upstream are written up in
    Type a goal → confirm → watch the (fake) call complete → result card. Pick a language
    from the globe menu; Arabic switches the UI to RTL.
 
-**Real translation:** set `GEMINI_API_KEY` in `.env` (or `OPENAI_API_KEY`) to translate ES/HI/AR ⇄ EN (otherwise passthrough). Provider is auto-selected Gemini > OpenAI > passthrough; the backend logs which on startup.
+**Real language + search:** set `GEMINI_API_KEY` in `.env` (or `OPENAI_API_KEY`) to power **translation**, **business-number search** (Google-Search grounding), and **intent classification**. Without a key everything falls back to offline passthrough/heuristics/mock numbers, so the app still runs. Providers are auto-selected Gemini > OpenAI > offline; the backend logs which on startup.
 
-**Real call** (spends one of your 20 free calls) — first authenticate the `calle` CLI
-(see [call-e-integrations](https://github.com/CALLE-AI/call-e-integrations)):
+**Real calls (go-live).** First authenticate the `calle` CLI and place one harmless self-test call to your own phone (also proves auth):
 
 ```bash
-SMOKE_TARGET_NUMBER=+1... npm run smoke:real
+SMOKE_TARGET_NUMBER=+1yourphone npm run smoke:real
 ```
+
+Then set `CALLE_MODE=real` in `.env` and `npm run dev`. The startup banner shows `calle=real` and warns that confirmed goals now place **real** calls. The **confirm gate** still guards every call — nothing dials without your explicit "yes."
+
+**On a physical device:** the app points at `http://localhost:3000`, which is the *phone itself* on-device — set the backend's LAN IP + an ATS exception (see [ios/README.md](ios/README.md)). The simulator needs no change.
 
 **iOS project details:** see [ios/README.md](ios/README.md).
 
@@ -147,7 +162,8 @@ SMOKE_TARGET_NUMBER=+1... npm run smoke:real
 
 - **Confirm gate:** no paid call goes out without an explicit user "yes" — a mistranslation must never cost a call.
 - **AI disclosure:** every brief identifies the caller as an AI assistant acting on the user's behalf (`CallBrief.agentDisclosure`).
-- **Dry-run first, always.** Real calls only on deliberate smoke tests.
+- **Dry-run first, always.** The backend is `CALLE_MODE=fake` by default; real calls need an explicit opt-in and are announced in the startup banner.
+- **No card data, ever.** Speakeasy never stores or transmits card numbers. Payment is a spoken preference only (e.g. "pay on pickup"), and the brief explicitly forbids the agent from reading card details over the call.
 - **Sensitive data** (insurance, DOB) stays in session memory, is never logged in plaintext, and never appears in the public demo video.
 
 ## Roadmap

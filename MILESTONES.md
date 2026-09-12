@@ -76,6 +76,28 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 - [x] **Easy keyboard dismissal.** Tap any empty area, swipe down, a Done button
   above the keyboard, or grab the orb.
 
+## Smart lookup, auto-mode & payments
+
+- [x] **Finds the number** — business search via Gemini Google-Search grounding
+  turns a goal + location into real phone numbers (deterministic mock for offline
+  tests); the confirm gate shows name · number · address before dialing.
+- [x] **Infers the mode** — a classifier picks book / compare (recommendation) /
+  discover (availability-first) from the goal; the old mode toggles are removed.
+- [x] **Location-aware** — CoreLocation resolves a coarse "City, ST" for "near me".
+- [x] **Auto-detects the spoken language** — `NLLanguageRecognizer` sets the
+  response/translation/voice from the transcript; seeds from the device language;
+  the picker still overrides.
+- [x] **Answers in text + audio** — every agent answer shows in the user's
+  language and is spoken, with a play/stop toggle.
+- [x] **Safe payment preference** — pay on pickup / delivery / card-on-file, spoken
+  by the agent; **no card data is ever stored or read.**
+- [x] **Go-live** — `CALLE_MODE=real` places real calls (verified end-to-end);
+  startup banner shows mode + providers with a loud REAL warning.
+- [x] **Polish & fixes** — friendly error banner surfaces backend messages (no raw
+  URLError); fixed duplicate spoken readbacks, a bogus "number" confirmation, an
+  empty transcript (now rebuilt from the live activity feed), and narration that
+  wouldn't stop.
+
 ## Navigation & core features
 
 - [x] **Burger-menu navigation** (`SideDrawer`) → Home / Your details / History /
