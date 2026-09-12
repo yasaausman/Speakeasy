@@ -17,6 +17,8 @@ import { CalleClient, FakeCalleTransport } from "../calle/client.js";
 import { MockTranslator } from "../language/translate.js";
 import { HeuristicRanker } from "../language/rank.js";
 import { NaiveSlotExtractor } from "../language/slots.js";
+import { HeuristicIntentClassifier } from "../language/intent.js";
+import { MockBusinessSearch } from "../search/business.js";
 import { Orchestrator, type GoalOptions } from "./orchestrator.js";
 import type { Session } from "./session.js";
 
@@ -35,6 +37,8 @@ function makeOrchestrator(): Orchestrator {
     translator: new MockTranslator(),      // passthrough (no network)
     ranker: new HeuristicRanker(),         // completed-first (no network)
     slotExtractor: new NaiveSlotExtractor(), // regex slots (no network)
+    search: new MockBusinessSearch(),        // reserved numbers (no network)
+    classifier: new HeuristicIntentClassifier(), // keyword intent (no network)
   });
 }
 
@@ -101,6 +105,27 @@ test("speculative discover returns available slots and books nothing", async () 
   assert.equal(s.intent, "discover");
   assert.ok((s.options?.length ?? 0) >= 1, "returns at least one available slot");
   assert.equal(s.result?.confirmationNumbers.length ?? 0, 0, "discovery books nothing");
+});
+
+test("no number given: a recommendation goal looks up several places and compares", async () => {
+  const orch = makeOrchestrator();
+  const session = orch.createSession("en");
+  const u = await orch.submitGoal(session.id, "find me a good dentist", "en", { location: "Austin, TX" });
+  const s = orch.getSession(session.id)!;
+  assert.equal(s.mode, "multi", "an unsure/recommendation goal fans out");
+  assert.equal(u.businesses?.length, 3, "compare looks up three places");
+  assert.equal(s.numbers?.length, 3);
+  assert.ok(u.businesses?.every((b) => b.phone.startsWith("+1")), "each has a dialable number");
+});
+
+test("no number given: a specific booking looks up one place and builds a brief", async () => {
+  const orch = makeOrchestrator();
+  const session = orch.createSession("en");
+  const u = await orch.submitGoal(session.id, "book a haircut at 3pm", "en", { location: "Austin, TX" });
+  const s = orch.getSession(session.id)!;
+  assert.equal(s.mode, "single");
+  assert.equal(u.businesses?.length, 1, "a specific booking looks up one place");
+  assert.ok(s.brief, "single mode builds a brief to confirm");
 });
 
 test("front-loaded preferences flow into the brief as constraints", async () => {

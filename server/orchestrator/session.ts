@@ -12,11 +12,20 @@ export type SessionPhase =
   | "done"
   | "failed";
 
+/** A business found by lookup, shown at the confirm gate before any call. */
+export interface FoundBusiness {
+  name: string;
+  phone: string;
+  address?: string;
+}
+
 /** What the app shows the user to confirm before any call goes out. */
 export interface GoalUnderstanding {
   understoodGoalEnglish: string;
   readbackUserLang: string;
   targetNumber: string;
+  /** Present when numbers were looked up (not user-supplied) — for confirm-gate display. */
+  businesses?: FoundBusiness[];
 }
 
 /** CallResult (from server/calle) plus the translated narration for the user. */

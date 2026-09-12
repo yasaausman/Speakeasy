@@ -10,11 +10,14 @@ import type { CallBrief } from "../calle/types.js";
 import { createTranslator, type Translator } from "../language/translate.js";
 import { createRanker, type Ranker } from "../language/rank.js";
 import { createSlotExtractor, type SlotExtractor } from "../language/slots.js";
+import { createIntentClassifier, type IntentClassifier, type GoalMode } from "../language/intent.js";
+import { createBusinessSearch, type BusinessSearch } from "../search/business.js";
 import type { LangCode } from "../language/languages.js";
 import {
   SessionStore,
   type CallIntent,
   type CallPreferences,
+  type FoundBusiness,
   type GoalUnderstanding,
   type RankedResult,
   type Session,
@@ -26,7 +29,8 @@ export interface OrchestratorOptions {
   translator?: Translator;
   ranker?: Ranker;
   slotExtractor?: SlotExtractor;
-  defaultTargetNumber?: string;
+  search?: BusinessSearch;
+  classifier?: IntentClassifier;
 }
 
 /** Everything that shapes a brief beyond the goal text. */
@@ -36,6 +40,7 @@ export interface GoalOptions {
   preferences?: CallPreferences;
   availability?: string;
   intent?: CallIntent;
+  location?: string; // user's location, for business lookup ("near me")
 }
 
 /** Params for composing a CallBrief. */
@@ -56,7 +61,8 @@ export class Orchestrator {
   private readonly translator: Translator;
   private readonly ranker: Ranker;
   private readonly slotExtractor: SlotExtractor;
-  private readonly defaultTargetNumber: string;
+  private readonly search: BusinessSearch;
+  private readonly classifier: IntentClassifier;
 
   constructor(opts: OrchestratorOptions = {}) {
     // Fake CALL-E transport by default; slower fake polling so live status is visible.
@@ -66,8 +72,9 @@ export class Orchestrator {
     this.translator = opts.translator ?? createTranslator();
     this.ranker = opts.ranker ?? createRanker();
     this.slotExtractor = opts.slotExtractor ?? createSlotExtractor();
+    this.search = opts.search ?? createBusinessSearch();
+    this.classifier = opts.classifier ?? createIntentClassifier();
     this.translatorName = this.translator.name;
-    this.defaultTargetNumber = opts.defaultTargetNumber || process.env.DEMO_TARGET_NUMBER || "+15555550123";
   }
 
   createSession(userLang: LangCode): Session {
@@ -88,25 +95,54 @@ export class Orchestrator {
 
     const englishGoal = (await this.translator.toEnglish(text, userLang)).trim();
     const cleaned = (opts.numbers ?? []).map((n) => n.trim()).filter(Boolean);
-    const multi = cleaned.length > 1;
-    const targets = cleaned.length ? cleaned : [this.defaultTargetNumber];
-    const intent: CallIntent = opts.intent ?? "book";
+
+    // Decide who to call. If the app supplied number(s) (a Contacts pick), respect
+    // them. Otherwise infer the mode from the goal and look up real business
+    // numbers from the goal + the user's location.
+    let targets: string[];
+    let multi: boolean;
+    let intent: CallIntent;
+    let businesses: FoundBusiness[] | undefined;
+
+    if (cleaned.length > 0) {
+      targets = cleaned;
+      multi = cleaned.length > 1;
+      intent = opts.intent === "discover" ? "discover" : "book";
+    } else {
+      const mode: GoalMode =
+        opts.intent === "discover" ? "discover" : await this.classifier.classify(englishGoal);
+      const limit = mode === "compare" ? 3 : 1;
+      const matches = await this.search.find(englishGoal, { near: opts.location, limit });
+      if (matches.length === 0) {
+        throw new Error("I couldn't find a phone number for that. Try naming the place, or add a location.");
+      }
+      businesses = matches.map((m) => ({ name: m.name, phone: m.phone, address: m.address }));
+      targets = matches.map((m) => m.phone);
+      multi = mode === "compare" && targets.length > 1;
+      intent = mode === "discover" ? "discover" : "book";
+    }
+
     const cleanFacts = cleanupFacts(opts.facts);
     const preferences = cleanupPreferences(opts.preferences);
     const availability = opts.availability?.trim() || undefined;
     const ctx: BriefContext = { facts: cleanFacts, preferences, availability, intent };
 
+    // Prefer business names in the readback when we looked the numbers up.
+    const primaryLabel = businesses?.[0] ? `${businesses[0].name} (${targets[0]})` : targets[0];
+    const placesLabel = businesses ? businesses.map((b) => b.name).join(", ") : `${targets.length} places`;
+
     const readbackEnglish = multi
-      ? `You want me to call ${targets.length} places and, for each: ${englishGoal}. Then I'll tell you the best option. Is that correct?`
+      ? `You want me to call ${placesLabel} and, for each: ${englishGoal}. Then I'll tell you the best option. Is that correct?`
       : intent === "discover"
-        ? `You want me to call ${targets[0]} and ask what appointment times are available for: ${englishGoal}. I won't book anything yet — I'll bring you the options. Is that correct?`
-        : `You want me to call ${targets[0]} and: ${englishGoal}. Is that correct?`;
+        ? `You want me to call ${primaryLabel} and ask what appointment times are available for: ${englishGoal}. I won't book anything yet — I'll bring you the options. Is that correct?`
+        : `You want me to call ${primaryLabel} and: ${englishGoal}. Is that correct?`;
     const readbackUserLang = await this.translator.fromEnglish(readbackEnglish, userLang);
 
     const understanding: GoalUnderstanding = {
       understoodGoalEnglish: englishGoal,
       readbackUserLang,
       targetNumber: multi ? `${targets.length} places` : targets[0],
+      businesses,
     };
 
     this.store.update(sessionId, {
