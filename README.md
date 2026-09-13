@@ -109,7 +109,12 @@ The test scheme includes outcome/calendar/slot-retention unit tests and labeled 
 
 ## Real calls
 
-Set a valid Gemini key for real business lookup/translation. CALL-E authentication remains on the backend; the integration supports the account-linked `calle auth login` token. See [integration notes](docs/CALLE-INTEGRATION-FEEDBACK.md).
+Set a valid Gemini key for real business lookup/translation. CALL-E authentication remains on the backend, with two selectable transports (`CALLE_TRANSPORT`):
+
+- `mcp` (default): OAuth via the account-linked `calle auth login` token. See [integration notes](docs/CALLE-INTEGRATION-FEEDBACK.md).
+- `rest`: the [CALL-E Developer REST API](https://docs.heycall-e.com/api-reference/calls) with an API key — no browser/OAuth. Set `CALLE_TRANSPORT=rest` and `CALLE_API_KEY=<your key>` (from the CALL-E dashboard) in `.env`. The backend then places calls via `POST /v1/calls` and polls `GET /v1/calls/{id}`.
+
+Either way, keep `CALLE_MODE=real` off for dry runs. The startup banner shows the active transport, e.g. `calle=real(rest)`.
 
 A real self-test explicitly places a phone call:
 

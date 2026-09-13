@@ -111,8 +111,10 @@ const port = Number(process.env.PORT || 3000);
 app
   .listen({ port, host: "0.0.0.0" })
   .then(() => {
+    const calleLabel =
+      orchestrator.calleMode === "real" ? `real(${orchestrator.calleTransport})` : "fake";
     app.log.info(
-      `KindlyCall backend listening on :${port} · calle=${orchestrator.calleMode} · ` +
+      `KindlyCall backend listening on :${port} · calle=${calleLabel} · ` +
         `translator=${orchestrator.translatorName} · search=${orchestrator.searchName} · ` +
         `intent=${orchestrator.classifierName}`,
     );

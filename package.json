@@ -9,7 +9,7 @@
     "start": "tsx server/index.ts",
     "smoke:fake": "node --import tsx scripts/smoke-call.ts --fake",
     "smoke:real": "tsx scripts/smoke-call.ts --real",
-    "test": "node --import tsx --test server/orchestrator/orchestrator.test.ts server/calle/normalize.test.ts server/calle/reliability.test.ts",
+    "test": "node --import tsx --test server/orchestrator/orchestrator.test.ts server/calle/normalize.test.ts server/calle/reliability.test.ts server/calle/rest.test.ts",
     "check": "tsc --noEmit"
   },
   "dependencies": {

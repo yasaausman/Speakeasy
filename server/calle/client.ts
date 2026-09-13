@@ -33,6 +33,17 @@ const defaultLogger: Logger = (event, payload = {}) => {
   console.log(JSON.stringify({ src: "calle", event, ...payload, ts: new Date().toISOString() }));
 };
 
+/** Thrown when a call was DEFINITELY not placed (e.g. a 4xx from the REST API:
+ *  bad key, insufficient balance, validation error). Unlike an ambiguous network
+ *  failure, retrying is safe and the error should surface to the user verbatim
+ *  instead of becoming a "call may have started" pending state. */
+export class CallNotPlacedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CallNotPlacedError";
+  }
+}
+
 // ── Transport abstraction ────────────────────────────────────────────────────
 export interface CalleTransport {
   planCall(input: PlanCallInput): Promise<PlanCallResult>;
@@ -290,6 +301,137 @@ function fakeScript(s: FakeScenario, hasInsurance: boolean): string[] {
   ];
 }
 
+// ── REST transport (CALL-E Developer API, api-key auth) ──────────────────────
+// Uses the REST API at https://api.heycall-e.com instead of the OAuth MCP
+// endpoint. Docs: https://docs.heycall-e.com/api-reference/calls
+//   POST /v1/calls          → create (queues) a call; returns { id, status }
+//   GET  /v1/calls/{id}      → poll the CallTask (status, summary, recipients…)
+// There is no plan/confirm step in REST, so planCall is a local no-op that
+// stashes the composed input; the user's approval is already enforced upstream
+// by the orchestrator's confirm gate. runCall is what actually places the call.
+type FetchLike = (url: string, init?: {
+  method?: string; headers?: Record<string, string>; body?: string;
+}) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown>; text: () => Promise<string> }>;
+
+/** One turn of the recipient conversation (docs: CallTaskRecipient). */
+type TranscriptTurn = { speaker?: unknown; text?: unknown; offset_seconds?: unknown };
+/** The CallTask object returned by GET /v1/calls/{id}. */
+type CallTaskResponse = {
+  id?: string;
+  status?: string; // queued | in_progress | completed | failed | canceled
+  summary?: string;
+  task_completed?: boolean;
+  completion_confidence?: { score?: unknown; label?: unknown };
+  evidence?: unknown;
+  structured_result?: Record<string, unknown>;
+  recipients?: Array<{
+    summary?: string;
+    transcript_turns?: TranscriptTurn[];
+    structured_result?: Record<string, unknown>;
+  }>;
+};
+
+const truncate = (s: string, n = 300): string => (s.length > n ? `${s.slice(0, n)}…` : s);
+
+/** Map a REST CallTask onto the transport-agnostic GetCallRunResult that
+ *  CalleClient.normalize() already knows how to read. */
+function mapCallTask(task: CallTaskResponse, runId: string): GetCallRunResult {
+  const rec = Array.isArray(task.recipients) ? task.recipients[0] : undefined;
+  const turns = Array.isArray(rec?.transcript_turns) ? rec!.transcript_turns : [];
+  const lines = turns
+    .map((t) => (typeof t.speaker === "string" && typeof t.text === "string" ? `${t.speaker}: ${t.text}` : ""))
+    .filter(Boolean);
+  // Shape a `details` object with the field names normalize() expects.
+  const details: Record<string, unknown> = {
+    ...(task.structured_result ?? {}),
+    ...(rec?.structured_result ?? {}),
+    task_completed: task.task_completed,
+    confidence: task.completion_confidence,
+    evidence: task.evidence,
+  };
+  return {
+    run_id: task.id ?? runId,
+    status: (task.status ?? "").toUpperCase(), // isTerminalStatus/normalizeStatus are case-insensitive
+    summary: str(task.summary) ?? str(rec?.summary),
+    details,
+    transcript: lines.join("\n"),
+    // Feed the same turns as the live activity feed so in-progress polls still
+    // render a growing transcript.
+    activity: lines.map((message) => ({ message })),
+    raw: task as Record<string, unknown>,
+  };
+}
+
+export class RestCalleTransport implements CalleTransport {
+  private plans = new Map<string, PlanCallInput>();
+  private seq = 0;
+  constructor(
+    private readonly apiKey: string,
+    private readonly baseUrl: string = process.env.CALLE_API_URL || "https://api.heycall-e.com",
+    private readonly log: Logger = defaultLogger,
+    private readonly fetchImpl: FetchLike = fetch as unknown as FetchLike,
+  ) {}
+
+  private headers(): Record<string, string> {
+    return { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" };
+  }
+
+  // No network, no call placed — just record the composed input for runCall.
+  async planCall(input: PlanCallInput): Promise<PlanCallResult> {
+    const planId = `rest-plan-${++this.seq}`;
+    this.plans.set(planId, input);
+    this.log("rest:plan_call", safeCallLogArgs(input as unknown as Record<string, unknown>));
+    return { plan_id: planId, confirm_token: "rest", ready_to_run: true, raw: { plan_id: planId } };
+  }
+
+  async runCall(input: RunCallInput): Promise<RunCallResult> {
+    const planned = this.plans.get(input.plan_id);
+    if (!planned) throw new CallNotPlacedError("No planned REST call for that id.");
+    const lang = (planned.language ?? "").trim();
+    const locale = /^[a-z]{2}(-[A-Za-z]{2})?$/.test(lang) ? lang : "en-US";
+    const recipients = (planned.to_phones ?? []).filter(Boolean);
+    const body = JSON.stringify({
+      task: planned.user_input,
+      ...(recipients.length ? { recipients: [{ phones: recipients, locale, region: planned.region ?? "US" }] } : {}),
+    });
+    let res;
+    try {
+      res = await this.fetchImpl(`${this.baseUrl}/v1/calls`, { method: "POST", headers: this.headers(), body });
+    } catch (err) {
+      // Network-level failure: the request may or may not have landed — ambiguous.
+      throw new Error(`create-call request failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const msg = `CALL-E create-call failed (HTTP ${res.status})${text ? `: ${truncate(text)}` : ""}`;
+      this.log("rest:run_call:error", { status: res.status });
+      // 4xx = the request was rejected outright (bad key, no balance, invalid
+      // input): definitely no call placed → surface it. 5xx = ambiguous.
+      if (res.status >= 400 && res.status < 500) throw new CallNotPlacedError(msg);
+      throw new Error(msg);
+    }
+    const j = (await res.json().catch(() => ({}))) as { id?: string; status?: string };
+    this.log("rest:run_call", { run_id: j.id ?? null, status: j.status ?? null });
+    return { run_id: str(j.id), status: (j.status ?? "queued").toUpperCase(), raw: j as Record<string, unknown> };
+  }
+
+  async getCallRun(input: GetCallRunInput): Promise<GetCallRunResult> {
+    const res = await this.fetchImpl(`${this.baseUrl}/v1/calls/${encodeURIComponent(input.run_id)}`, {
+      headers: this.headers(),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`CALL-E get-call failed (HTTP ${res.status})${text ? `: ${truncate(text)}` : ""}`);
+    }
+    const task = (await res.json().catch(() => ({}))) as CallTaskResponse;
+    return mapCallTask(task, input.run_id);
+  }
+
+  async close(): Promise<void> {
+    /* stateless HTTP — nothing to close */
+  }
+}
+
 // ── High-level client ────────────────────────────────────────────────────────
 export type PollOptions = {
   firstDelayMs: number; // wait before the first poll (docs: ~60s for real runs)
@@ -404,8 +546,12 @@ export class CalleClient {
     let run: RunCallResult;
     try {
       run = await this.runCall({ plan_id: plan.plan_id, confirm_token: plan.confirm_token });
-    } catch {
-      // The request may have reached CALL-E. Retrying could place a second call.
+    } catch (err) {
+      // A definite no-call rejection (4xx: bad key, no balance, invalid request)
+      // should surface to the user — no call was placed, so retrying is safe.
+      if (err instanceof CallNotPlacedError) throw err;
+      // Otherwise the request may have reached CALL-E. Retrying could place a
+      // second call, so keep the outcome UNKNOWN rather than redialing.
       return this.normalize({ status: "UNKNOWN", raw: {} });
     }
     this.log("run:started", { run_id: run.run_id ?? null, status: run.status ?? null });
@@ -542,6 +688,14 @@ export type CreateClientOptions = {
 export function createCalleClient(opts: CreateClientOptions = {}): CalleClient {
   const mode = opts.mode ?? (process.env.CALLE_MODE === "real" ? "real" : "fake");
   if (mode === "real") {
+    // Two real transports: REST (Developer API key) or MCP (OAuth). REST is
+    // opt-in via CALLE_TRANSPORT=rest and needs CALLE_API_KEY.
+    if ((process.env.CALLE_TRANSPORT ?? "").trim().toLowerCase() === "rest") {
+      const apiKey = (process.env.CALLE_API_KEY ?? "").trim();
+      if (!apiKey) throw new Error("CALLE_TRANSPORT=rest requires CALLE_API_KEY (your CALL-E Developer API key).");
+      const baseUrl = process.env.CALLE_API_URL || "https://api.heycall-e.com";
+      return new CalleClient({ transport: new RestCalleTransport(apiKey, baseUrl, opts.log), poll: opts.poll, log: opts.log });
+    }
     const oauth: OAuthConfig = opts.oauth ?? {
       serverUrl: process.env.CALLE_MCP_URL || "https://seleven-mcp-sg.airudder.com/mcp/openagent_oauth",
       redirectUri: process.env.CALLE_OAUTH_REDIRECT_URI || "http://127.0.0.1:8090/callback",

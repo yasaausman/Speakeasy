@@ -63,6 +63,10 @@ export class Orchestrator {
   readonly classifierName: string;
   /** "real" places live phone calls; "fake" is the dry-run transport. */
   readonly calleMode: "fake" | "real" = process.env.CALLE_MODE === "real" ? "real" : "fake";
+  /** In real mode, which transport carries the call: "rest" (Developer API key)
+   *  or "mcp" (OAuth). Ignored in fake mode. */
+  readonly calleTransport: "rest" | "mcp" =
+    (process.env.CALLE_TRANSPORT ?? "").trim().toLowerCase() === "rest" ? "rest" : "mcp";
   private readonly calle: CalleClient;
   private readonly translator: Translator;
   private readonly ranker: Ranker;
