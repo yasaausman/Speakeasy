@@ -1,77 +1,77 @@
-name: Speakeasy
+name: KindlyCall
 options:
-  bundleIdPrefix: com.speakeasy
+  bundleIdPrefix: com.kindlycall
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
 targets:
-  Speakeasy:
+  KindlyCall:
     type: application
     platform: iOS
     sources:
-      - path: Speakeasy
+      - path: KindlyCall
     # Generated Info.plist (SwiftUI lifecycle — no scene manifest needed). A
     # generated plist lets us declare the NSAppTransportSecurity dict, which a
     # scalar INFOPLIST_KEY_ build setting can't express.
     info:
-      path: Speakeasy/Info.plist
+      path: KindlyCall/Info.plist
       properties:
         UILaunchScreen: {}
         # Voice (Track B): microphone + speech recognition usage strings.
-        NSMicrophoneUsageDescription: "Speakeasy uses the microphone so you can speak your request."
-        NSSpeechRecognitionUsageDescription: "Speakeasy transcribes your speech to understand what you need."
+        NSMicrophoneUsageDescription: "KindlyCall uses the microphone so you can speak your request."
+        NSSpeechRecognitionUsageDescription: "KindlyCall transcribes your speech to understand what you need."
         # Add to Calendar (write-only) for booked appointments.
-        NSCalendarsWriteOnlyAccessUsageDescription: "Speakeasy adds appointments it books to your calendar."
+        NSCalendarsWriteOnlyAccessUsageDescription: "KindlyCall adds appointments it books to your calendar."
         # Full access to read your free/busy so the agent only asks for open times.
-        NSCalendarsFullAccessUsageDescription: "Speakeasy checks your free times so it only requests slots you're available for."
+        NSCalendarsFullAccessUsageDescription: "KindlyCall checks your free times so it only requests slots you're available for."
         # Coarse location to find businesses near you ("a dentist near me").
-        NSLocationWhenInUseUsageDescription: "Speakeasy uses your location to find nearby businesses to call."
-        # Reach the Speakeasy backend running on the Mac over the LAN (device testing).
-        NSLocalNetworkUsageDescription: "Speakeasy connects to the Speakeasy backend running on your Mac to place calls."
+        NSLocationWhenInUseUsageDescription: "KindlyCall uses your location to find nearby businesses to call."
+        # Reach the KindlyCall backend running on the Mac over the LAN (device testing).
+        NSLocalNetworkUsageDescription: "KindlyCall connects to the KindlyCall backend running on your Mac to place calls."
         # Allow the plain-http LAN call to the Mac's private IP without disabling ATS globally.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.speakeasy.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.kindlycall.app
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "5.0"
-  SpeakeasyTests:
+  KindlyCallTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: SpeakeasyTests
+      - path: KindlyCallTests
     dependencies:
-      - target: Speakeasy
+      - target: KindlyCall
     settings:
       base:
         GENERATE_INFOPLIST_FILE: "YES"
   # A lightweight UI smoke test: the app launches and the Home screen renders its
   # greeting and starter chips. Runs via `xcodebuild test` on a booted simulator.
-  SpeakeasyUITests:
+  KindlyCallUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: SpeakeasyUITests
+      - path: KindlyCallUITests
     dependencies:
-      - target: Speakeasy
+      - target: KindlyCall
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.speakeasy.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.kindlycall.uitests
         GENERATE_INFOPLIST_FILE: "YES"
         SWIFT_VERSION: "5.0"
 schemes:
-  Speakeasy:
+  KindlyCall:
     build:
       targets:
-        Speakeasy: all
-        SpeakeasyUITests: [test]
-        SpeakeasyTests: [test]
+        KindlyCall: all
+        KindlyCallUITests: [test]
+        KindlyCallTests: [test]
     test:
       targets:
-        - SpeakeasyUITests
-        - SpeakeasyTests
+        - KindlyCallUITests
+        - KindlyCallTests
     run:
       config: Debug

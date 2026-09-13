@@ -1,7 +1,7 @@
 import SwiftUI
 
 /*
- DIRECTION CONTRACT — Speakeasy visual world (seed: calm-blue, user-pinned)
+ DIRECTION CONTRACT — KindlyCall visual world (seed: calm-blue, user-pinned)
  THESIS: A calm, trustworthy companion that makes the scary English phone call
    for you. Cool and reassuring, not a cold utility app — confidence you can hand
    your worry to.

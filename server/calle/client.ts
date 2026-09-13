@@ -1,5 +1,5 @@
 /**
- * The ONE module the rest of Speakeasy uses to talk to CALL-E.
+ * The ONE module the rest of KindlyCall uses to talk to CALL-E.
  * Golden rule #2: nothing outside server/calle/ touches MCP directly.
  *
  * Exposes a transport-agnostic CalleClient with:
@@ -348,7 +348,7 @@ export class CalleClient {
   }
 
   /**
-   * Compose Speakeasy's internal CallBrief into a single natural-language
+   * Compose KindlyCall's internal CallBrief into a single natural-language
    * `user_input` for plan_call, plus structured hints. The disclosure line is
    * always first and non-optional (golden rule #6).
    */
@@ -442,7 +442,7 @@ export class CalleClient {
     return result;
   }
 
-  /** Turn a terminal get_call_run response into Speakeasy's CallResult. */
+  /** Turn a terminal get_call_run response into KindlyCall's CallResult. */
   normalize(r: GetCallRunResult): CallResult {
     const rawStatus = (r.status ?? "").toString();
     if (!isTerminalStatus(rawStatus)) {
@@ -546,7 +546,7 @@ export function createCalleClient(opts: CreateClientOptions = {}): CalleClient {
       serverUrl: process.env.CALLE_MCP_URL || "https://seleven-mcp-sg.airudder.com/mcp/openagent_oauth",
       redirectUri: process.env.CALLE_OAUTH_REDIRECT_URI || "http://127.0.0.1:8090/callback",
       scope: process.env.CALLE_OAUTH_SCOPE || "openid email profile",
-      tokenPath: process.env.CALLE_TOKEN_PATH || ".speakeasy/calle-oauth.json",
+      tokenPath: process.env.CALLE_TOKEN_PATH || ".kindlycall/calle-oauth.json",
     };
     return new CalleClient({ transport: new McpCalleTransport(oauth, opts.log), poll: opts.poll, log: opts.log });
   }

@@ -18,7 +18,7 @@ struct SideDrawer: View {
                     Image(systemName: "phone.fill").foregroundStyle(.white).font(.headline)
                 }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Speakeasy").font(.title3.weight(.bold)).foregroundStyle(Theme.ink)
+                    Text("KindlyCall").font(.title3.weight(.bold)).foregroundStyle(Theme.ink)
                     Text("Calls, handled").font(.caption).foregroundStyle(Theme.inkSecondary)
                 }
             }

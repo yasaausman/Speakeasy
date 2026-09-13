@@ -4,11 +4,11 @@
  * Ground truth: call-e-integrations repo, docs/mcp/openagent-oauth.md.
  * The build-plan doc's original CallBrief was NOT the plan_call input shape —
  * the repo wins (golden rule #1). plan_call takes `user_input` plus optional
- * hints; our CallBrief is Speakeasy's *internal* representation, which we
+ * hints; our CallBrief is KindlyCall's *internal* representation, which we
  * compose into that `user_input` string (see client.ts::briefToUserInput).
  */
 
-// ── Speakeasy's internal brief (composed into plan_call input) ───────────────
+// ── KindlyCall's internal brief (composed into plan_call input) ───────────────
 export type CallBrief = {
   objective: string; // "Book a dentist appointment for my son"
   targetNumber: string; // E.164, e.g. "+15551234567"
@@ -93,7 +93,7 @@ export function isTerminalStatus(status: string | undefined): boolean {
   return TERMINAL_STATUSES.has(status.trim().toUpperCase());
 }
 
-// ── Speakeasy's normalized final result (build-plan section 6) ───────────────
+// ── KindlyCall's normalized final result (build-plan section 6) ───────────────
 export type CallOutcomeStatus =
   | "pending"
   | "completed"

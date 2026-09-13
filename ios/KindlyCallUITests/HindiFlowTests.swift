@@ -5,8 +5,8 @@ final class HindiFlowTests: XCTestCase {
 
     private func start(_ scenario: String) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchEnvironment["SPEAKEASY_DEMO_SCENARIO"] = scenario
-        app.launchEnvironment["SPEAKEASY_DEMO_LANGUAGE"] = "hi"
+        app.launchEnvironment["KINDLYCALL_DEMO_SCENARIO"] = scenario
+        app.launchEnvironment["KINDLYCALL_DEMO_LANGUAGE"] = "hi"
         app.launch()
         XCTAssertTrue(app.textFields.firstMatch.waitForExistence(timeout: 10))
         let field = app.textFields.firstMatch

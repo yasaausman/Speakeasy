@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SpeakeasyApp: App {
+struct KindlyCallApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()

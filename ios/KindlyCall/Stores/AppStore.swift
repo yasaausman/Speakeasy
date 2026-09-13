@@ -16,8 +16,8 @@ final class AppStore: ObservableObject {
     @Published var useCalendarAvailability: Bool { didSet { defaults.set(useCalendarAvailability, forKey: Keys.useAvail) } }
 
     private enum Keys {
-        static let details = "speakeasy.details", history = "speakeasy.history", textForward = "speakeasy.textForward"
-        static let autoCal = "speakeasy.autoCal", useAvail = "speakeasy.useAvail"
+        static let details = "kindlycall.details", history = "kindlycall.history", textForward = "kindlycall.textForward"
+        static let autoCal = "kindlycall.autoCal", useAvail = "kindlycall.useAvail"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -35,12 +35,12 @@ final class AppStore: ObservableObject {
     }
 
     func hasCalendarEvent(_ id: String) -> Bool {
-        (defaults.stringArray(forKey: "speakeasy.calendarEvents") ?? []).contains(id)
+        (defaults.stringArray(forKey: "kindlycall.calendarEvents") ?? []).contains(id)
     }
     func recordCalendarEvent(_ id: String) {
-        var ids = defaults.stringArray(forKey: "speakeasy.calendarEvents") ?? []
+        var ids = defaults.stringArray(forKey: "kindlycall.calendarEvents") ?? []
         if !ids.contains(id) { ids.append(id) }
-        defaults.set(Array(ids.suffix(100)), forKey: "speakeasy.calendarEvents")
+        defaults.set(Array(ids.suffix(100)), forKey: "kindlycall.calendarEvents")
     }
 
     func clearHistory() { history = [] }

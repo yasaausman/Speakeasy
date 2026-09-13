@@ -1,6 +1,6 @@
 > **September 13 reliability pass:** This file preserves earlier milestone history. The current source of truth is README.md and docs/submission/VERIFICATION.md. Earlier claims about 10/10 scores, universally on-device speech, complete localization, logging privacy, and date handling were too broad. The new pass adds inquiry-only comparisons, recoverable pending outcomes, Hindi recovery copy, explicit date review and regression tests. Actual user testing and submission-video publication remain outstanding.
 
-# Speakeasy — Milestones
+# KindlyCall — Milestones
 
 The running checklist of what's built. **Everything below marked `[x]` is done and
 verified**; the open items are at the bottom. Built for the CALL-E "Your Code Is
@@ -63,7 +63,7 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 ## Native device bring-up & voice UX
 
 - [x] **Runs on a physical iPhone.** Signed with a free Personal Team (local dev
-  bundle id `com.yasaausman.speakeasy`), installed and launched on-device; **real
+  bundle id `com.yasaausman.kindlycall`), installed and launched on-device; **real
   on-device speech-to-text verified** (Hindi and Spanish transcribed live under the
   orb) — something the simulator can't do (no sustainable mic).
 - [x] **Push-to-speak fixed.** A teammate's `HoldButtonStyle` didn't fire
@@ -145,9 +145,9 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
 - [x] **Accessibility + haptics** — secondary text tuned to WCAG AA, tap targets ≥44pt,
   light/medium/success haptics on chip tap / "Yes, call" / a booked result.
 - [x] **Depth** — soft background gradient instead of flat gray.
-- [x] **Configurable backend URL** — env var / `SpeakeasyBackendURL` Info.plist key;
+- [x] **Configurable backend URL** — env var / `KindlyCallBackendURL` Info.plist key;
   no Swift edit per network.
-- [x] **iOS UI smoke test** (`ios/SpeakeasyUITests/`) — launch + Home render + language
+- [x] **iOS UI smoke test** (`ios/KindlyCallUITests/`) — launch + Home render + language
   switch/persist; green via `xcodebuild test`.
 - [x] **CALL-E status-normalization tests** — breadth for VOICEMAIL/BUSY/NO_ANSWER/…,
   "COMPLETED ≠ success", and confirmation extraction (`server/calle/normalize.test.ts`).
@@ -172,7 +172,7 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
   [call-e-integrations#126](https://github.com/CALLE-AI/call-e-integrations/issues/126).
 - [x] **Opened the submission PR** →
   [awesome-phone-call-agents#449](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/449)
-  — `apps/typescript/speakeasy/` catalog entry; their repository validator passes.
+  — `apps/typescript/kindlycall/` catalog entry; their repository validator passes.
 
 ---
 
@@ -183,7 +183,7 @@ Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
   `NSAllowsLocalNetworking` + `NSLocalNetworkUsageDescription` in a generated
   `Info.plist`. To run the full flow: `npm run dev` on the Mac, ⌘R on the phone (same
   Wi-Fi), and **Allow** the one-time "find devices on your local network" prompt.
-  *(IP is per-network — update `SpeakeasyAPI.swift` if the Mac's address changes.)*
+  *(IP is per-network — update `KindlyCallAPI.swift` if the Mac's address changes.)*
 - [ ] **Record the ~3-minute demo video** (problem → payoff arc). *Time-sensitive.*
 - [ ] **Submit the Devpost form** (paste the submission PR link). *Time-sensitive.*
 - [ ] **Pick one headline beat** for the video/README pitch (speak in Spanish → real

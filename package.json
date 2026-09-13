@@ -1,9 +1,9 @@
 {
-  "name": "speakeasy",
+  "name": "kindlycall",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Speak or type what you need in your language. Speakeasy makes the English phone calls via CALL-E and tells you what happened, in your language.",
+  "description": "Speak or type what you need in your language. KindlyCall makes the English phone calls via CALL-E and tells you what happened, in your language.",
   "scripts": {
     "dev": "tsx watch server/index.ts",
     "start": "tsx server/index.ts",

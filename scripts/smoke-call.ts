@@ -32,7 +32,7 @@ const brief: CallBrief = {
 };
 
 async function main() {
-  console.log(`\n=== Speakeasy Phase 0 smoke test — mode: ${REAL ? "REAL ☎️" : "FAKE (dry-run)"} ===\n`);
+  console.log(`\n=== KindlyCall Phase 0 smoke test — mode: ${REAL ? "REAL ☎️" : "FAKE (dry-run)"} ===\n`);
   if (REAL) {
     console.log(`This will place a REAL call to ${brief.targetNumber} and spend one call from your quota.\n`);
   }

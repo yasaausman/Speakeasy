@@ -1,12 +1,12 @@
-# Speakeasy — Design system (iOS)
+# KindlyCall — Design system (iOS)
 
 A **playful, vibrant, trustworthy** world for an app that makes scary English
 phone calls on the user's behalf. Friendly and reassuring — a companion, not a
 cold utility. Native SwiftUI, HIG-respecting (Dynamic Type, semantic dark mode,
 one interactive tint, SF Symbols, system controls, in-context permissions).
 
-Source of truth: `Speakeasy/Design/Theme.swift` (tokens + components + haptics)
-and `Speakeasy/Design/VoiceOrb.swift` (signature element).
+Source of truth: `KindlyCall/Design/Theme.swift` (tokens + components + haptics)
+and `KindlyCall/Design/VoiceOrb.swift` (signature element).
 
 ## Palette (adapts light ⇄ dark)
 

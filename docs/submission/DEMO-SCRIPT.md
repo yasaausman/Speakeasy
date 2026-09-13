@@ -1,6 +1,6 @@
 # Hindi appointment demo — target 2:45
 
-Working name: **Speakeasy**. Replace only after the team chooses a name.
+Working name: **KindlyCall**. Replace only after the team chooses a name.
 
 Promise: **Book everyday appointments in your language—even when the business only speaks English.**
 
@@ -11,7 +11,7 @@ This is a recording script, not evidence that the described real call has happen
 Show a real team member or consenting tester holding the iPhone. Use their actual situation; do not invent a personal history.
 
 English narration:
-> Booking an appointment can take one phone call—if you speak the language. We built Speakeasy for someone who knows what they need but needs help handling that English conversation.
+> Booking an appointment can take one phone call—if you speak the language. We built KindlyCall for someone who knows what they need but needs help handling that English conversation.
 
 If a tester offers a useful observation, use their words with permission. No fabricated testimonial or population statistic is needed.
 

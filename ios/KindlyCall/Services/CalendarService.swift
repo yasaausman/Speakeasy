@@ -31,7 +31,7 @@ enum CalendarService {
         if let phone = phoneToReschedule, !phone.isEmpty {
             fullNotes += "\n\nTo change or cancel, call \(phone)."
         }
-        fullNotes += "\n\nBooked with Speakeasy."
+        fullNotes += "\n\nBooked with KindlyCall."
         event.notes = fullNotes
         if let location, !location.isEmpty { event.location = location }
         // tel: URL makes the event's link tap-to-call.

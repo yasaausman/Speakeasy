@@ -38,7 +38,7 @@ final class SpeechManager: NSObject, ObservableObject {
             AVAudioApplication.requestRecordPermission { cont.resume(returning: $0) }
         }
         if !(speechOK && micOK) {
-            lastError = "Speakeasy needs microphone and speech access to hear you. Turn it on in Settings, or type your request below."
+            lastError = "KindlyCall needs microphone and speech access to hear you. Turn it on in Settings, or type your request below."
         }
         return speechOK && micOK
     }

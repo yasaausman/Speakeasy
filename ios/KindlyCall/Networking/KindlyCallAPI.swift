@@ -4,9 +4,9 @@ import Foundation
 /// lives on the Node server behind these endpoints — never in the app.
 ///
 /// Two implementations:
-///   - MockSpeakeasyAPI: canned data, no network. Lets the app run in the
+///   - MockKindlyCallAPI: canned data, no network. Lets the app run in the
 ///     simulator today, before the backend or Xcode auth exists.
-///   - LiveSpeakeasyAPI: real HTTP calls to the Node backend (Phase M1+).
+///   - LiveKindlyCallAPI: real HTTP calls to the Node backend (Phase M1+).
 /// Everything sent with a goal (grows over time — bundled to keep call sites clean).
 struct GoalRequest: Encodable {
     let text: String
@@ -18,7 +18,7 @@ struct GoalRequest: Encodable {
     var location: String? = nil     // "City, ST" for near-me business lookups
 }
 
-protocol SpeakeasyAPI {
+protocol KindlyCallAPI {
     func createSession(lang: String) async throws -> String
     func submitGoal(sessionId: String, _ req: GoalRequest) async throws -> GoalUnderstanding
     func confirm(sessionId: String) async throws
@@ -27,7 +27,7 @@ protocol SpeakeasyAPI {
 }
 
 // MARK: - Mock (runs standalone in the simulator; zero backend, zero calls)
-actor MockSpeakeasyAPI: SpeakeasyAPI {
+actor MockKindlyCallAPI: KindlyCallAPI {
     private var phase: SessionPhase = .idle
     private var understanding: GoalUnderstanding?
     private var pollTicks = 0
@@ -114,16 +114,16 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
 }
 
 // MARK: - Live (Phase M1+: talks to the Node backend)
-struct LiveSpeakeasyAPI: SpeakeasyAPI {
+struct LiveKindlyCallAPI: KindlyCallAPI {
     /// Where the Node backend lives. Resolved at runtime so it never needs a Swift
-    /// edit: set `SPEAKEASY_BACKEND_URL` (scheme env var) or the `SpeakeasyBackendURL`
+    /// edit: set `KINDLYCALL_BACKEND_URL` (scheme env var) or the `KindlyCallBackendURL`
     /// Info.plist key to override; otherwise fall back to the per-platform default.
-    var baseURL: URL = LiveSpeakeasyAPI.resolveBaseURL()
+    var baseURL: URL = LiveKindlyCallAPI.resolveBaseURL()
 
     static func resolveBaseURL() -> URL {
-        if let s = ProcessInfo.processInfo.environment["SPEAKEASY_BACKEND_URL"],
+        if let s = ProcessInfo.processInfo.environment["KINDLYCALL_BACKEND_URL"],
            let u = URL(string: s.trimmingCharacters(in: .whitespaces)), !s.isEmpty { return u }
-        if let s = Bundle.main.object(forInfoDictionaryKey: "SpeakeasyBackendURL") as? String,
+        if let s = Bundle.main.object(forInfoDictionaryKey: "KindlyCallBackendURL") as? String,
            !s.trimmingCharacters(in: .whitespaces).isEmpty,
            let u = URL(string: s.trimmingCharacters(in: .whitespaces)) { return u }
 #if targetEnvironment(simulator)

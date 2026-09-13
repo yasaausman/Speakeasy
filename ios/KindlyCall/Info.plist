@@ -24,17 +24,17 @@
 		<true/>
 	</dict>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Speakeasy checks your free times so it only requests slots you're available for.</string>
+	<string>KindlyCall checks your free times so it only requests slots you're available for.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
-	<string>Speakeasy adds appointments it books to your calendar.</string>
+	<string>KindlyCall adds appointments it books to your calendar.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Speakeasy connects to the Speakeasy backend running on your Mac to place calls.</string>
+	<string>KindlyCall connects to the KindlyCall backend running on your Mac to place calls.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Speakeasy uses your location to find nearby businesses to call.</string>
+	<string>KindlyCall uses your location to find nearby businesses to call.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Speakeasy uses the microphone so you can speak your request.</string>
+	<string>KindlyCall uses the microphone so you can speak your request.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Speakeasy transcribes your speech to understand what you need.</string>
+	<string>KindlyCall transcribes your speech to understand what you need.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

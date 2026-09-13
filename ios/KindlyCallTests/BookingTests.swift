@@ -1,5 +1,5 @@
 import XCTest
-@testable import Speakeasy
+@testable import KindlyCall
 
 final class BookingTests: XCTestCase {
     func testRunCompletionDoesNotMeanTaskCompletion() throws {
@@ -45,7 +45,7 @@ final class BookingTests: XCTestCase {
     }
 }
 
-actor RecordingAPI: SpeakeasyAPI {
+actor RecordingAPI: KindlyCallAPI {
     var request: GoalRequest?
     func createSession(lang: String) async throws -> String { "test-session" }
     func submitGoal(sessionId: String, _ req: GoalRequest) async throws -> GoalUnderstanding {

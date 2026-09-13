@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Speculative booking (C4): after a discovery call, the user picks one of the
-/// available times and Speakeasy calls back to book that exact slot.
+/// available times and KindlyCall calls back to book that exact slot.
 struct SlotPickerView: View {
     let options: [SlotOption]
     let intro: String?

@@ -1,4 +1,4 @@
-# Speakeasy — evidence against the official rubric
+# KindlyCall — evidence against the official rubric
 
 Updated September 13, 2026. This replaces the earlier speculative seven-category numerical scorecard. Automated tests and code structure do not justify claiming “10/10” safety or technical completeness.
 

@@ -6,7 +6,7 @@
  * real smoke tests don't force a fresh browser login every run.
  *
  * SECURITY: tokens/codes are never printed. The cache file is written 0600 and
- * lives under CALLE_TOKEN_PATH (default .speakeasy/, git-ignored).
+ * lives under CALLE_TOKEN_PATH (default .kindlycall/, git-ignored).
  */
 import fs from "node:fs";
 import http from "node:http";
@@ -238,7 +238,7 @@ export async function connectCalle(
   const cliToken = findCliToken(config.serverUrl);
   if (cliToken) {
     const provider = new StaticTokenOAuthProvider(cliToken);
-    const client = new Client({ name: "speakeasy", version: "0.0.0" }, { capabilities: {} });
+    const client = new Client({ name: "kindlycall", version: "0.0.0" }, { capabilities: {} });
     const transport = new StreamableHTTPClientTransport(new URL(config.serverUrl), { authProvider: provider });
     await client.connect(transport);
     return { client, transport };
@@ -247,7 +247,7 @@ export async function connectCalle(
   // No CLI token — fall back to a self-contained browser OAuth flow.
   let authorizationUrl: URL | null = null;
   const clientMetadata: OAuthClientMetadata = {
-    client_name: "Speakeasy CALL-E client",
+    client_name: "KindlyCall CALL-E client",
     redirect_uris: [config.redirectUri],
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
@@ -264,7 +264,7 @@ export async function connectCalle(
   );
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const client = new Client({ name: "speakeasy", version: "0.0.0" }, { capabilities: {} });
+    const client = new Client({ name: "kindlycall", version: "0.0.0" }, { capabilities: {} });
     const transport = new StreamableHTTPClientTransport(new URL(config.serverUrl), { authProvider: provider });
     try {
       await client.connect(transport);

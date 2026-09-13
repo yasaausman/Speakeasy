@@ -4,7 +4,7 @@ import Combine
 import NaturalLanguage
 
 /// Drives the app's copy of the state machine and talks to the backend via the
-/// SpeakeasyAPI protocol. Swap MockSpeakeasyAPI ⇄ LiveSpeakeasyAPI with no UI change.
+/// KindlyCallAPI protocol. Swap MockKindlyCallAPI ⇄ LiveKindlyCallAPI with no UI change.
 @MainActor
 final class SessionViewModel: ObservableObject {
     @Published var phase: SessionPhase = .idle
@@ -38,7 +38,7 @@ final class SessionViewModel: ObservableObject {
     /// Persisted so a manual pick — or the last auto-detected language — survives
     /// relaunch, instead of snapping back to the device default every launch.
     @Published var language: AppLanguage = .spanish {
-        didSet { UserDefaults.standard.set(language.code, forKey: "speakeasy.language") }
+        didSet { UserDefaults.standard.set(language.code, forKey: "kindlycall.language") }
     }
     let languages = AppLanguage.all
 
@@ -48,7 +48,7 @@ final class SessionViewModel: ObservableObject {
     /// Coarse "near me" location for business lookups (city + region only).
     let location = LocationManager()
 
-    private let api: SpeakeasyAPI
+    private let api: KindlyCallAPI
     let store: AppStore
     private var sessionId: String?
     private var pollTask: Task<Void, Never>?
@@ -56,13 +56,13 @@ final class SessionViewModel: ObservableObject {
 
     var canAcceptInput: Bool { phase == .idle || phase == .collecting || phase == .failed }
 
-    /// Defaults to the live Node backend. Pass MockSpeakeasyAPI() to run offline.
-    init(store: AppStore, api: SpeakeasyAPI = LiveSpeakeasyAPI()) {
+    /// Defaults to the live Node backend. Pass MockKindlyCallAPI() to run offline.
+    init(store: AppStore, api: KindlyCallAPI = LiveKindlyCallAPI()) {
         self.store = store
         self.api = api
         // Restore the last-used language if the user has ever picked or spoken one;
         // otherwise start in the device's language. (didSet doesn't fire in init.)
-        if let saved = UserDefaults.standard.string(forKey: "speakeasy.language") {
+        if let saved = UserDefaults.standard.string(forKey: "kindlycall.language") {
             self.language = AppLanguage.byCode(saved)
         } else {
             self.language = AppLanguage.deviceDefault

@@ -1,5 +1,5 @@
 /**
- * Speakeasy backend HTTP API. The iOS app talks only to this; all CALL-E logic
+ * KindlyCall backend HTTP API. The iOS app talks only to this; all CALL-E logic
  * stays behind server/calle/. Endpoints:
  *
  *   GET  /health
@@ -112,7 +112,7 @@ app
   .listen({ port, host: "0.0.0.0" })
   .then(() => {
     app.log.info(
-      `Speakeasy backend listening on :${port} · calle=${orchestrator.calleMode} · ` +
+      `KindlyCall backend listening on :${port} · calle=${orchestrator.calleMode} · ` +
         `translator=${orchestrator.translatorName} · search=${orchestrator.searchName} · ` +
         `intent=${orchestrator.classifierName}`,
     );

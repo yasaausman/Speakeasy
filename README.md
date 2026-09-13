@@ -1,12 +1,12 @@
-# Speakeasy
+# KindlyCall
 
 [![CI](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml/badge.svg)](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml)
 
 **Book everyday appointments in your language—even when the business only speaks English.**
 
-Speak or type a request, review the business and the plan, and approve the call. Speakeasy uses CALL-E to handle the English conversation, then explains the outcome in your language through text and speech.
+Speak or type a request, review the business and the plan, and approve the call. KindlyCall uses CALL-E to handle the English conversation, then explains the outcome in your language through text and speech.
 
-Built for **CALL-E: Your Code Is Calling**. The headline demo focuses on a Hindi-speaking appointment user. The working name remains Speakeasy while the team considers [name options](docs/submission/NAME-OPTIONS.md).
+Built for **CALL-E: Your Code Is Calling**. The headline demo focuses on a Hindi-speaking appointment user. The working name remains KindlyCall while the team considers [name options](docs/submission/NAME-OPTIONS.md).
 
 ## The experience
 
@@ -73,7 +73,7 @@ Requires Xcode, an iOS simulator or signed physical device, and XcodeGen.
 
 ```bash
 xcodegen generate --spec ios/project.yml
-open ios/Speakeasy.xcodeproj
+open ios/KindlyCall.xcodeproj
 ```
 
 The normal app uses the backend. Start a fully offline backend explicitly:
@@ -82,25 +82,25 @@ The normal app uses the backend. Start a fully offline backend explicitly:
 CALLE_MODE=fake GEMINI_API_KEY='' OPENAI_API_KEY='' npm run dev
 ```
 
-The simulator defaults to `http://localhost:3000`. For an iPhone, set the Xcode scheme environment variable `SPEAKEASY_BACKEND_URL` or the Info.plist `SpeakeasyBackendURL` key to your Mac's LAN URL, on the same Wi-Fi. This is a local-development service, not an authenticated public deployment.
+The simulator defaults to `http://localhost:3000`. For an iPhone, set the Xcode scheme environment variable `KINDLYCALL_BACKEND_URL` or the Info.plist `KindlyCallBackendURL` key to your Mac's LAN URL, on the same Wi-Fi. This is a local-development service, not an authenticated public deployment.
 
 ### Labeled Hindi UI rehearsal
 
 In a **Debug** scheme, set:
 
 ```text
-SPEAKEASY_DEMO_SCENARIO=success
-SPEAKEASY_DEMO_LANGUAGE=hi
+KINDLYCALL_DEMO_SCENARIO=success
+KINDLYCALL_DEMO_LANGUAGE=hi
 ```
 
-Other scenarios: `gap`, `pending`. To hear native narration, set `SPEAKEASY_DEMO_AUDIO=1`.
+Other scenarios: `gap`, `pending`. To hear native narration, set `KINDLYCALL_DEMO_AUDIO=1`.
 
 The app displays a persistent simulated-call banner and uses a separate details/history store. It does not use the backend, translation API, or CALL-E. These fixtures test and rehearse UI; never present them as real phone-call evidence. Remove the environment variables to return to the backend.
 
 ### iOS tests
 
 ```bash
-xcodebuild -project ios/Speakeasy.xcodeproj -scheme Speakeasy \
+xcodebuild -project ios/KindlyCall.xcodeproj -scheme KindlyCall \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath ios/build test
 ```

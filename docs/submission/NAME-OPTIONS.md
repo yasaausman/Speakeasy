@@ -1,6 +1,6 @@
 # Name options
 
-Current code name remains **Speakeasy**. No rename has been applied.
+**Decision (2026-09-13): the product is now named KindlyCall.** The rename has been applied across the app, code, and docs. The exploration below is kept for the record; note the earlier web check flagged an existing "KindlyCall" automated check-in service (see "Names screened out"), which the team accepted when choosing this name.
 
 ## Strongest directions
 

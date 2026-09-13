@@ -2,7 +2,7 @@
 import Foundation
 
 /// Deterministic UI rehearsal, explicitly labeled in the app. No network or CALL-E.
-actor DemoSpeakeasyAPI: SpeakeasyAPI {
+actor DemoKindlyCallAPI: KindlyCallAPI {
     private let scenario: String
     private var phase: SessionPhase = .collecting
     private var lang = "hi"

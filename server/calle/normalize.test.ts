@@ -3,7 +3,7 @@
  *
  * A real-call matrix across every terminal status is expensive and non-deterministic
  * (you can't reliably make a line ring BUSY on demand). These tests instead pin the
- * pure mapping from CALL-E's terminal statuses onto Speakeasy's normalized outcome,
+ * pure mapping from CALL-E's terminal statuses onto KindlyCall's normalized outcome,
  * plus the "COMPLETED ≠ success" reading and confirmation-number extraction — the
  * places a wrong mapping would quietly mislead the user.
  */

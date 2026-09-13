@@ -1,6 +1,6 @@
 # Devpost submission draft
 
-Working title: **Speakeasy — Appointments in your language**
+Working title: **KindlyCall — Appointments in your language**
 
 Tagline: **Your words. We make the call.**
 
@@ -13,7 +13,7 @@ Everyday appointments often depend on an English phone conversation. Someone can
 
 ## What it does
 
-Speakeasy is a native iOS assistant for everyday phone tasks. It translates a user's request, finds a business, and presents the business and a readback for approval. CALL-E then makes the English call. Results return in the user's language as text and speech.
+KindlyCall is a native iOS assistant for everyday phone tasks. It translates a user's request, finds a business, and presents the business and a readback for approval. CALL-E then makes the English call. Results return in the user's language as text and speech.
 
 The app supports direct tasks, inquiry-only comparisons, and availability discovery followed by a separately approved booking call. Saved details and preferences help the agent answer predictable questions. Missing information is surfaced for the user to answer. An unknown call outcome stays pending and can be checked without redialing.
 

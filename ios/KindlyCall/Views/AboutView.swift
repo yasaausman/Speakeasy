@@ -4,15 +4,15 @@ import SwiftUI
 struct AboutView: View {
     private let steps: [(String, String, String)] = [
         ("mic.fill", "Say what you need", "Speak or type in your language — book an appointment, ask a question, sort out a bill."),
-        ("checkmark.bubble.fill", "Check it's right", "Speakeasy reads your request back in your language. Nothing is called until you say yes."),
-        ("phone.connection.fill", "We make the call", "Speakeasy phones in English, navigates the menu, and talks to the person — you watch it happen live."),
+        ("checkmark.bubble.fill", "Check it's right", "KindlyCall reads your request back in your language. Nothing is called until you say yes."),
+        ("phone.connection.fill", "We make the call", "KindlyCall phones in English, navigates the menu, and talks to the person — you watch it happen live."),
         ("speaker.wave.2.fill", "Hear what happened", "You get the outcome and any confirmation number, spoken and written in your language, and saved."),
     ]
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
-                Text("Speakeasy makes the English phone calls you'd rather not — and tells you what happened, in your language.")
+                Text("KindlyCall makes the English phone calls you'd rather not — and tells you what happened, in your language.")
                     .font(.title3.weight(.medium))
                     .foregroundStyle(Theme.ink)
 

@@ -5,7 +5,7 @@ enum AppRoute: Hashable, CaseIterable {
 
     var title: String {
         switch self {
-        case .home: return "Speakeasy"
+        case .home: return "KindlyCall"
         case .savedDetails: return "Your details"
         case .history: return "History"
         case .about: return "How it works"
@@ -32,9 +32,9 @@ struct RootView: View {
 
     init() {
 #if DEBUG
-        let scenario = ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_SCENARIO"]
-        let defaults = scenario == nil ? UserDefaults.standard : UserDefaults(suiteName: "speakeasy.demo")!
-        if scenario != nil { defaults.removePersistentDomain(forName: "speakeasy.demo") }
+        let scenario = ProcessInfo.processInfo.environment["KINDLYCALL_DEMO_SCENARIO"]
+        let defaults = scenario == nil ? UserDefaults.standard : UserDefaults(suiteName: "kindlycall.demo")!
+        if scenario != nil { defaults.removePersistentDomain(forName: "kindlycall.demo") }
         let s = AppStore(defaults: defaults)
 #else
         let s = AppStore()
@@ -43,9 +43,9 @@ struct RootView: View {
 #if DEBUG
         if let scenario {
             s.autoAddToCalendar = false
-            s.textForward = ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_AUDIO"] != "1"
-            let model = SessionViewModel(store: s, api: DemoSpeakeasyAPI(scenario: scenario))
-            if let code = ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_LANGUAGE"] { model.language = AppLanguage.byCode(code) }
+            s.textForward = ProcessInfo.processInfo.environment["KINDLYCALL_DEMO_AUDIO"] != "1"
+            let model = SessionViewModel(store: s, api: DemoKindlyCallAPI(scenario: scenario))
+            if let code = ProcessInfo.processInfo.environment["KINDLYCALL_DEMO_LANGUAGE"] { model.language = AppLanguage.byCode(code) }
             _vm = StateObject(wrappedValue: model)
         } else { _vm = StateObject(wrappedValue: SessionViewModel(store: s)) }
 #else
@@ -62,7 +62,7 @@ struct RootView: View {
                 }
                 .safeAreaInset(edge: .top) {
 #if DEBUG
-                    if ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_SCENARIO"] != nil {
+                    if ProcessInfo.processInfo.environment["KINDLYCALL_DEMO_SCENARIO"] != nil {
                         Text(F.t("Demo · simulated call", vm.language.code) + " · SIMULATED")
                             .font(.caption.weight(.semibold)).foregroundStyle(Theme.inkSecondary)
                             .padding(8).frame(maxWidth: .infinity).background(Theme.surfaceSunk)

@@ -1,5 +1,5 @@
 {
-  "_comment": "SYNTHETIC sample only — reserved fictional data, NOT a real call. It shows the SHAPE of a normalized get_call_run result Speakeasy consumes. Identifiers, times, transcript, and the +1-555-01xx number are all fictional (555-0100..555-0199 is the reserved range for fictional use). To produce your own real run, authenticate the calle CLI and use `SMOKE_TARGET_NUMBER=+1... npm run smoke:real`.",
+  "_comment": "SYNTHETIC sample only — reserved fictional data, NOT a real call. It shows the SHAPE of a normalized get_call_run result KindlyCall consumes. Identifiers, times, transcript, and the +1-555-01xx number are all fictional (555-0100..555-0199 is the reserved range for fictional use). To produce your own real run, authenticate the calle CLI and use `SMOKE_TARGET_NUMBER=+1... npm run smoke:real`.",
   "run_id": "run_synthetic_00000000",
   "status": "COMPLETED",
   "message": "Call ended from realtime events.",
