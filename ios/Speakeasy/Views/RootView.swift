@@ -31,9 +31,26 @@ struct RootView: View {
     @State private var showLanguages = false
 
     init() {
+#if DEBUG
+        let scenario = ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_SCENARIO"]
+        let defaults = scenario == nil ? UserDefaults.standard : UserDefaults(suiteName: "speakeasy.demo")!
+        if scenario != nil { defaults.removePersistentDomain(forName: "speakeasy.demo") }
+        let s = AppStore(defaults: defaults)
+#else
         let s = AppStore()
+#endif
         _store = StateObject(wrappedValue: s)
+#if DEBUG
+        if let scenario {
+            s.autoAddToCalendar = false
+            s.textForward = ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_AUDIO"] != "1"
+            let model = SessionViewModel(store: s, api: DemoSpeakeasyAPI(scenario: scenario))
+            if let code = ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_LANGUAGE"] { model.language = AppLanguage.byCode(code) }
+            _vm = StateObject(wrappedValue: model)
+        } else { _vm = StateObject(wrappedValue: SessionViewModel(store: s)) }
+#else
         _vm = StateObject(wrappedValue: SessionViewModel(store: s))
+#endif
     }
 
     var body: some View {
@@ -43,7 +60,16 @@ struct RootView: View {
                     Theme.backgroundGradient.ignoresSafeArea()
                     routedContent
                 }
-                .navigationTitle(route.title)
+                .safeAreaInset(edge: .top) {
+#if DEBUG
+                    if ProcessInfo.processInfo.environment["SPEAKEASY_DEMO_SCENARIO"] != nil {
+                        Text(F.t("Demo · simulated call", vm.language.code) + " · SIMULATED")
+                            .font(.caption.weight(.semibold)).foregroundStyle(Theme.inkSecondary)
+                            .padding(8).frame(maxWidth: .infinity).background(Theme.surfaceSunk)
+                    }
+#endif
+                }
+                .navigationTitle(F.t(route.title, vm.language.code))
                 .navigationBarTitleDisplayMode(route == .home ? .large : .inline)
                 .toolbarBackground(Theme.ground, for: .navigationBar)
                 .toolbar {
@@ -53,7 +79,7 @@ struct RootView: View {
                                 .font(.title3.weight(.semibold))
                                 .foregroundStyle(Theme.ink)
                         }
-                        .accessibilityLabel("Menu")
+                        .accessibilityLabel(F.t("Menu", vm.language.code))
                     }
                     if route == .home {
                         ToolbarItem(placement: .topBarTrailing) { languagePill }
@@ -89,7 +115,7 @@ struct RootView: View {
         case .home:
             HomeView(vm: vm)
         case .savedDetails:
-            SavedDetailsView(store: store)
+            SavedDetailsView(store: store, lang: vm.language.code)
         case .history:
             HistoryView(store: store) { text, code in
                 vm.speech.speak(text, localeId: AppLanguage.byCode(code).ttsLocale)
@@ -105,7 +131,7 @@ struct RootView: View {
                 Image(systemName: "globe")
                 Text(vm.language.endonym).font(.subheadline.weight(.semibold))
             }
-            .foregroundStyle(Theme.primary)
+            .foregroundStyle(Theme.actionInk)
             .padding(.horizontal, 14).frame(minHeight: 44)
             .background(Capsule().fill(Theme.surface))
             .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))

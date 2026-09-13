@@ -6,7 +6,8 @@
  * confirm gate lives here: confirmAndCall() is the ONLY path to a paid call.
  */
 import { createCalleClient, type CalleClient } from "../calle/client.js";
-import type { CallBrief } from "../calle/types.js";
+import { assertNoCardData } from "../privacy.js";
+import type { CallBrief, CallResult } from "../calle/types.js";
 import { createTranslator, type Translator } from "../language/translate.js";
 import { createRanker, type Ranker } from "../language/rank.js";
 import { createSlotExtractor, type SlotExtractor } from "../language/slots.js";
@@ -20,6 +21,7 @@ import {
   type FoundBusiness,
   type GoalUnderstanding,
   type RankedResult,
+  type NarratedResult,
   type Session,
   type SlotOption,
 } from "./session.js";
@@ -72,7 +74,9 @@ export class Orchestrator {
     // Fake CALL-E transport by default; slower fake polling so live status is visible.
     this.calle =
       opts.calle ??
-      createCalleClient({ poll: { firstDelayMs: 1800, intervalMs: 2200, maxWaitMs: 30_000 } });
+      createCalleClient(this.calleMode === "fake"
+        ? { poll: { firstDelayMs: 1800, intervalMs: 2200, maxWaitMs: 30_000 } }
+        : {});
     this.translator = opts.translator ?? createTranslator();
     this.ranker = opts.ranker ?? createRanker();
     this.slotExtractor = opts.slotExtractor ?? createSlotExtractor();
@@ -99,78 +103,89 @@ export class Orchestrator {
     const s = this.store.get(sessionId);
     if (!s) throw new Error("unknown session");
 
-    const englishGoal = (await this.translator.toEnglish(text, userLang)).trim();
-    const cleaned = (opts.numbers ?? []).map((n) => n.trim()).filter(Boolean);
-
-    // Decide who to call. If the app supplied number(s) (a Contacts pick), respect
-    // them. Otherwise infer the mode from the goal and look up real business
-    // numbers from the goal + the user's location.
-    let targets: string[];
-    let multi: boolean;
-    let intent: CallIntent;
-    let businesses: FoundBusiness[] | undefined;
-
-    if (cleaned.length > 0) {
-      targets = cleaned;
-      multi = cleaned.length > 1;
-      intent = opts.intent === "discover" ? "discover" : "book";
-    } else {
-      const mode: GoalMode =
-        opts.intent === "discover" ? "discover" : await this.classifier.classify(englishGoal);
-      const wanted = mode === "compare" ? 3 : 1;
-      // Always fetch a few candidates: grounded search is unreliable at limit 1
-      // (the model tends to return an empty list), so ask for several and keep
-      // the top `wanted`.
-      const matches = await this.search.find(englishGoal, { near: opts.location, limit: Math.max(wanted, 4) });
-      const chosen = matches.slice(0, wanted);
-      if (chosen.length === 0) {
-        throw new Error("I couldn't find a phone number for that. Try naming the place, or add a location.");
-      }
-      businesses = chosen.map((m) => ({ name: m.name, phone: m.phone, address: m.address }));
-      targets = chosen.map((m) => m.phone);
-      multi = mode === "compare" && targets.length > 1;
-      intent = mode === "discover" ? "discover" : "book";
+    if (["calling", "polling", "narrating", "pending"].includes(s.phase)) {
+      throw new Error("An existing call is still active or its outcome is unknown. Check its status first.");
     }
+    if (s.preparing) throw new Error("This request is already being prepared.");
+    s.preparing = true;
+    this.store.update(sessionId, { phase: "collecting" });
+    try {
+      assertNoCardData({ text, facts: opts.facts, preferences: opts.preferences, availability: opts.availability });
+      const englishGoal = (await this.translator.toEnglish(text, userLang)).trim();
+      const cleaned = (opts.numbers ?? []).map((n) => n.trim()).filter(Boolean);
 
-    const cleanFacts = cleanupFacts(opts.facts);
-    const preferences = cleanupPreferences(opts.preferences);
-    const availability = opts.availability?.trim() || undefined;
-    const ctx: BriefContext = { facts: cleanFacts, preferences, availability, intent };
+      // Decide who to call. If the app supplied number(s) (a Contacts pick), respect
+      // them. Otherwise infer the mode from the goal and look up real business
+      // numbers from the goal + the user's location.
+      let targets: string[];
+      let multi: boolean;
+      let intent: CallIntent;
+      let businesses: FoundBusiness[] | undefined;
 
-    // Prefer business names in the readback when we looked the numbers up.
-    const primaryLabel = businesses?.[0] ? `${businesses[0].name} (${targets[0]})` : targets[0];
-    const placesLabel = businesses ? businesses.map((b) => b.name).join(", ") : `${targets.length} places`;
+      if (cleaned.length > 0) {
+        targets = cleaned;
+        multi = cleaned.length > 1;
+        intent = multi ? "compare" : opts.intent === "discover" ? "discover" : "book";
+      } else {
+        const mode: GoalMode =
+          opts.intent === "discover" ? "discover" : await this.classifier.classify(englishGoal);
+        const wanted = mode === "compare" ? 3 : 1;
+        // Always fetch a few candidates: grounded search is unreliable at limit 1
+        // (the model tends to return an empty list), so ask for several and keep
+        // the top `wanted`.
+        const matches = await this.search.find(englishGoal, { near: opts.location, limit: Math.max(wanted, 4) });
+        const chosen = matches.slice(0, wanted);
+        if (chosen.length === 0) {
+          throw new Error("I couldn't find a phone number for that. Try naming the place, or add a location.");
+        }
+        businesses = chosen.map((m) => ({ name: m.name, phone: m.phone, address: m.address }));
+        targets = chosen.map((m) => m.phone);
+        multi = mode === "compare" && targets.length > 1;
+        intent = mode;
+      }
 
-    const readbackEnglish = multi
-      ? `You want me to call ${placesLabel} and, for each: ${englishGoal}. Then I'll tell you the best option. Is that correct?`
-      : intent === "discover"
-        ? `You want me to call ${primaryLabel} and ask what appointment times are available for: ${englishGoal}. I won't book anything yet — I'll bring you the options. Is that correct?`
-        : `You want me to call ${primaryLabel} and: ${englishGoal}. Is that correct?`;
-    const readbackUserLang = await this.translator.fromEnglish(readbackEnglish, userLang);
+      const cleanFacts = cleanupFacts(opts.facts);
+      const preferences = cleanupPreferences(opts.preferences);
+      const availability = opts.availability?.trim() || undefined;
+      const ctx: BriefContext = { facts: cleanFacts, preferences, availability, intent };
 
-    const understanding: GoalUnderstanding = {
-      understoodGoalEnglish: englishGoal,
-      readbackUserLang,
-      targetNumber: multi ? `${targets.length} places` : targets[0],
-      businesses,
-    };
+      // Prefer business names in the readback when we looked the numbers up.
+      const primaryLabel = businesses?.[0] ? `${businesses[0].name} (${targets[0]})` : targets[0];
+      const placesLabel = businesses ? businesses.map((b) => b.name).join(", ") : `${targets.length} places`;
 
-    this.store.update(sessionId, {
-      phase: "confirming",
-      mode: multi ? "multi" : "single",
-      intent,
-      userLang,
-      originalText: text,
-      englishGoal,
-      numbers: targets,
-      facts: cleanFacts,
-      preferences,
-      availability,
-      options: undefined,
-      brief: multi ? undefined : buildBrief(englishGoal, targets[0], ctx),
-      understanding,
-    });
-    return understanding;
+      const readbackEnglish = multi
+        ? `You want me to call ${placesLabel} and, for each: ${englishGoal}. I will only ask questions, not book or order anything. Then I'll compare the options for you. Is that correct?`
+        : intent === "compare"
+          ? `You want me to ask ${primaryLabel} about: ${englishGoal}. This is an inquiry only; I will not book or order anything. Is that correct?`
+        : intent === "discover"
+          ? `You want me to call ${primaryLabel} and ask what appointment times are available for: ${englishGoal}. I won't book anything yet — I'll bring you the options. Is that correct?`
+          : `You want me to call ${primaryLabel} and: ${englishGoal}. Is that correct?`;
+      const readbackUserLang = await this.translator.fromEnglish(readbackEnglish, userLang);
+
+      const understanding: GoalUnderstanding = {
+        understoodGoalEnglish: englishGoal,
+        readbackUserLang,
+        targetNumber: multi ? `${targets.length} places` : targets[0],
+        businesses,
+      };
+
+      this.store.update(sessionId, {
+        phase: "confirming",
+        mode: multi ? "multi" : "single",
+        intent,
+        userLang,
+        originalText: text,
+        englishGoal,
+        numbers: targets,
+        facts: cleanFacts,
+        preferences,
+        availability,
+        options: undefined,
+        brief: multi ? undefined : buildBrief(englishGoal, targets[0], ctx),
+        understanding,
+      });
+      return understanding;
+    } finally { s.preparing = false; }
   }
 
   /** confirming → calling. THE CONFIRM GATE. Kicks off the call(s) in the
@@ -181,7 +196,7 @@ export class Orchestrator {
     if (s.phase !== "confirming") throw new Error("session is not awaiting confirmation");
 
     if (s.mode === "multi" && s.englishGoal && s.numbers) {
-      const ctx: BriefContext = { facts: s.facts, preferences: s.preferences, availability: s.availability, intent: "book" };
+      const ctx: BriefContext = { facts: s.facts, preferences: s.preferences, availability: s.availability, intent: "compare" };
       this.store.update(sessionId, { phase: "calling", statusLine: `Calling ${s.numbers.length} places…` });
       void this.runFanout(sessionId, s.englishGoal, s.numbers, s.userLang, ctx);
       return;
@@ -212,36 +227,7 @@ export class Orchestrator {
         });
       });
 
-      const outcomeUserLang = await this.translator.fromEnglish(result.outcome, userLang);
-
-      // Speculative discovery: pull available slots for the user to choose from.
-      if (intent === "discover") {
-        this.store.update(sessionId, { phase: "narrating", statusLine: "Finding available times…" });
-        const slots = await this.slotExtractor
-          .extract(englishGoal, result.outcome, result.transcript)
-          .catch(() => [] as string[]);
-        const options: SlotOption[] = await Promise.all(
-          slots.map(async (label, i) => ({
-            id: `slot-${i}`,
-            label,
-            labelUserLang: await this.translator.fromEnglish(label, userLang).catch(() => label),
-          })),
-        );
-        this.store.update(sessionId, {
-          phase: "done",
-          statusLine: null,
-          result: { ...result, outcomeUserLang },
-          options,
-        });
-        return;
-      }
-
-      this.store.update(sessionId, { phase: "narrating", statusLine: "Wrapping up…" });
-      this.store.update(sessionId, {
-        phase: "done",
-        statusLine: null,
-        result: { ...result, outcomeUserLang },
-      });
+      await this.finishSingle(sessionId, result, userLang, intent, englishGoal);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const errorUserLang = await this.translator
@@ -249,6 +235,72 @@ export class Orchestrator {
         .catch(() => message);
       this.store.update(sessionId, { phase: "failed", statusLine: null, errorMessage: errorUserLang });
     }
+  }
+
+  private async narrateResult(result: CallResult, lang: LangCode): Promise<NarratedResult> {
+    const outcomeUserLang = await this.translator.fromEnglish(result.outcome, lang).catch(() => result.outcome);
+    const evidenceUserLang = await Promise.all((result.evidence ?? []).map(x =>
+      this.translator.fromEnglish(x, lang).catch(() => x)));
+    const gapsUserLang = await Promise.all((result.gaps ?? []).map(x =>
+      this.translator.fromEnglish(x, lang).catch(() => x)));
+    const appointmentUserLang = result.appointmentText
+      ? await this.translator.fromEnglish(result.appointmentText, lang).catch(() => result.appointmentText) : undefined;
+    return { ...result, outcomeUserLang, evidenceUserLang, gapsUserLang, appointmentUserLang };
+  }
+
+  private async finishSingle(sessionId: string, result: CallResult, userLang: LangCode,
+    intent: CallIntent, englishGoal: string): Promise<void> {
+    const narrated = await this.narrateResult(result, userLang);
+    const options: SlotOption[] = [];
+    if (intent === "discover" && result.status === "completed") {
+      const slots = await this.slotExtractor.extract(englishGoal, result.outcome, result.transcript).catch(() => [] as string[]);
+      for (const [i, label] of slots.entries()) {
+        options.push({ id: `slot-${i}`, label,
+          labelUserLang: await this.translator.fromEnglish(label, userLang).catch(() => label) });
+      }
+    }
+    this.store.update(sessionId, {
+      phase: result.status === "pending" ? "pending" : "done", statusLine: null,
+      result: narrated, options, runId: result.runId,
+    });
+  }
+
+  /** Only poll existing run ids. A second tap cannot start another monitoring loop. */
+  resumeMonitoring(sessionId: string): void {
+    const s = this.store.get(sessionId);
+    if (!s || s.phase !== "pending") throw new Error("No pending call to check.");
+    const recoverable = s.result?.runId || s.ranked?.some(x => x.result.status === "pending" && x.result.runId);
+    if (!recoverable) throw new Error("Check CALL-E call history to resolve this call before trying again.");
+    this.store.update(sessionId, { phase: "polling", statusLine: null });
+    void this.resumeInBackground(s);
+  }
+
+  private async resumeInBackground(s: Session): Promise<void> {
+    if (s.mode === "multi" && s.ranked) {
+      const results = await Promise.all(s.ranked.map(async item => {
+        if (item.result.status !== "pending" || !item.result.runId) return item;
+        return { ...item, result: await this.narrateResult(await this.calle.resumeRun(item.result.runId), s.userLang) };
+      }));
+      await this.finishComparison(s.id, results, s.englishGoal ?? "", s.userLang);
+    } else if (s.result?.runId) {
+      const result = await this.calle.resumeRun(s.result.runId);
+      await this.finishSingle(s.id, result, s.userLang, s.intent, s.englishGoal ?? "");
+    }
+  }
+
+  private async finishComparison(sessionId: string, results: RankedResult[], englishGoal: string, userLang: LangCode) {
+    const pending = results.some(x => x.result.status === "pending");
+    const eligible = results.filter(x => x.result.status === "completed" && x.result.taskCompleted === true);
+    // Failed/unknown inquiries cannot be promoted by the language model.
+    const ranking = eligible.length ? await this.ranker.rank(englishGoal, eligible.map(x => ({
+      label: x.business?.name ?? x.number, status: x.result.status, summary: x.result.outcome,
+    }))).catch(() => ({ order: eligible.map((_, i) => i), winnerReason: "Review the available options below." })) : null;
+    const ranked = ranking ? [...ranking.order.map(i => eligible[i]).filter(Boolean),
+      ...results.filter(x => !eligible.includes(x))] : results;
+    const reason = pending ? "Some call outcomes are still unknown. Check their status before choosing a business."
+      : ranking?.winnerReason ?? "No confirmed option yet. Review what happened before trying again.";
+    const winnerReason = await this.translator.fromEnglish(reason, userLang).catch(() => reason);
+    this.store.update(sessionId, { phase: pending ? "pending" : "done", statusLine: null, ranked, winnerReason });
   }
 
   /** Multi-call (C1): call every number in parallel, then rank the outcomes. */
@@ -266,8 +318,8 @@ export class Orchestrator {
         numbers.map(async (number): Promise<RankedResult> => {
           try {
             const result = await this.calle.runBrief(buildBrief(englishGoal, number, ctx));
-            const outcomeUserLang = await this.translator.fromEnglish(result.outcome, userLang);
-            return { number, result: { ...result, outcomeUserLang } };
+            const business = this.store.get(sessionId)?.understanding?.businesses?.find(x => x.phone === number);
+            return { number, business, result: await this.narrateResult(result, userLang) };
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             const outcomeUserLang = await this.translator.fromEnglish(msg, userLang).catch(() => msg);
@@ -287,18 +339,7 @@ export class Orchestrator {
         }),
       );
 
-      this.store.update(sessionId, { phase: "narrating", statusLine: "Comparing the results…" });
-
-      const ranking = await this.ranker.rank(
-        englishGoal,
-        results.map((r) => ({ label: r.number, status: r.result.status, summary: r.result.outcome })),
-      );
-      const ranked = ranking.order.map((i) => results[i]).filter(Boolean);
-      const winnerReason = await this.translator
-        .fromEnglish(ranking.winnerReason, userLang)
-        .catch(() => ranking.winnerReason);
-
-      this.store.update(sessionId, { phase: "done", statusLine: null, ranked, winnerReason });
+      await this.finishComparison(sessionId, results, englishGoal, userLang);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const errorUserLang = await this.translator
@@ -323,6 +364,15 @@ function buildBrief(englishGoal: string, targetNumber: string, ctx: BriefContext
   // Payment is a spoken note only — never card details. Tell them how the user will pay.
   if (p?.payment) constraints.push(`Payment: ${p.payment}. Do NOT provide or read any card numbers.`);
 
+  if (intent === "compare") {
+    return {
+      objective: `INQUIRY ONLY: Gather information to compare businesses for this request: ${englishGoal}. Do NOT book, reserve, order, purchase, reschedule, or cancel anything. The user will choose a business later.`,
+      targetNumber, targetRegion: "US", language: "English", constraints,
+      facts: facts ?? {}, agentDisclosure: DISCLOSURE,
+      successCondition: "the relevant availability, prices, requirements and limitations are reported without making any commitment",
+      fallback: "Report what is known and unknown. Never make a booking, even if asked to hold a slot.",
+    };
+  }
   if (intent === "discover") {
     return {
       objective: `Call and ask what appointment times are available for: ${englishGoal}. Do NOT book anything — just collect the specific available dates and times and report them.`,

@@ -22,6 +22,7 @@ protocol SpeakeasyAPI {
     func createSession(lang: String) async throws -> String
     func submitGoal(sessionId: String, _ req: GoalRequest) async throws -> GoalUnderstanding
     func confirm(sessionId: String) async throws
+    func checkStatus(sessionId: String) async throws
     func fetchSession(sessionId: String) async throws -> SessionState
 }
 
@@ -55,6 +56,8 @@ actor MockSpeakeasyAPI: SpeakeasyAPI {
         phase = .calling
         pollTicks = 0
     }
+
+    func checkStatus(sessionId: String) async throws {}
 
     func fetchSession(sessionId: String) async throws -> SessionState {
         // Walk through a realistic sequence so the UI can be exercised end to end.
@@ -146,6 +149,10 @@ struct LiveSpeakeasyAPI: SpeakeasyAPI {
 
     func confirm(sessionId: String) async throws {
         let _: EmptyBody = try await post("/api/sessions/\(sessionId)/confirm", body: EmptyBody())
+    }
+
+    func checkStatus(sessionId: String) async throws {
+        let _: EmptyBody = try await post("/api/sessions/\(sessionId)/check", body: EmptyBody())
     }
 
     func fetchSession(sessionId: String) async throws -> SessionState {

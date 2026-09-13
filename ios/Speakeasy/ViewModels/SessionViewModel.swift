@@ -31,6 +31,7 @@ final class SessionViewModel: ObservableObject {
     /// Specific number to call (from the confirm screen / Contacts). nil → the
     /// backend infers the mode and looks up the number(s) from the goal + location.
     @Published var targetNumber: String?
+    private var selectedBusiness: FoundBusiness?
     private(set) var lastGoalText = ""
 
     /// User-selected language (English/Spanish/Hindi/Arabic). The call stays English.
@@ -76,7 +77,7 @@ final class SessionViewModel: ObservableObject {
         speech.$lastError
             .compactMap { $0 }
             .receive(on: RunLoop.main)
-            .sink { [weak self] message in self?.errorMessage = message }
+            .sink { [weak self] message in self?.errorMessage = F.t(message, self?.language.code ?? "en") }
             .store(in: &cancellables)
 
         // Location is requested in-context — on the first goal submit (see launch),
@@ -159,22 +160,25 @@ final class SessionViewModel: ObservableObject {
         // In-context location: only when we'll actually look a place up ("near me"),
         // i.e. the user hasn't pinned a specific number. Prompts at most once.
         if numbers == nil { location.requestIfNeeded() }
-        let facts = store.details.asFacts            // always share saved details now
+        let facts = store.details.asFacts
         let prefs = store.details.asPreferences      // front-loaded preferences
         let wantAvailability = store.useCalendarAvailability
-        let place = location.placemark
         run {
             self.phase = .collecting
             self.activity = []
             self.result = nil; self.ranked = nil; self.winnerReason = nil; self.options = nil
             let availability = wantAvailability ? await AvailabilityService.summary() : nil
+            let place = numbers == nil ? await self.location.resolvePlace() : nil
             let sid = try await self.ensureSession()
             let req = GoalRequest(
                 text: goal, lang: self.language.code,
                 numbers: numbers,
                 facts: facts.isEmpty ? nil : facts,
                 preferences: prefs, availability: availability, location: place)
-            let u = try await self.api.submitGoal(sessionId: sid, req)
+            var u = try await self.api.submitGoal(sessionId: sid, req)
+            if u.businesses == nil, let business = self.selectedBusiness, business.phone == self.targetNumber {
+                u.businesses = [business]
+            }
             self.understanding = u
             self.phase = .confirming   // WAIT for the user — no call goes out yet.
             self.isSubmitting = false
@@ -184,10 +188,12 @@ final class SessionViewModel: ObservableObject {
 
     /// Discover result: user picked an available slot → place call 2 to book it.
     func pickSlot(_ option: SlotOption) {
-        let base = lastGoalText.isEmpty ? "Book an appointment" : lastGoalText
+        let base = understanding?.understoodGoalEnglish ?? lastGoalText
         let goal = "\(base). Book the \(option.label) appointment specifically."
-        let number = targetNumber
+        let business = understanding?.businesses?.first
+        let number = targetNumber ?? business?.phone ?? understanding?.targetNumber
         reset()
+        selectedBusiness = business
         targetNumber = number
         launch(goal: goal)
     }
@@ -216,18 +222,23 @@ final class SessionViewModel: ObservableObject {
 
     /// Re-run the same request (after no-answer, a gap, or a failure).
     func retry() {
+        guard phase != .pending else { return }
         let goal = lastGoalText
-        let number = targetNumber
+        let number = targetNumber ?? understanding?.businesses?.first?.phone ?? understanding?.targetNumber
         guard !goal.isEmpty else { return }
+        let business = understanding?.businesses?.first
         reset()
+        selectedBusiness = business
         targetNumber = number
         submitGoal(goal)
     }
 
     /// After a comparison, call the winning place to actually book it.
     func bookWinner(number: String) {
+        let business = ranked?.first(where: { $0.number == number })?.business
         let goal = lastGoalText.isEmpty ? "Book an appointment" : "Book an appointment. \(lastGoalText)"
         reset()
+        selectedBusiness = business
         targetNumber = number
         submitGoal(goal)
     }
@@ -278,10 +289,30 @@ final class SessionViewModel: ObservableObject {
     /// The confirm gate. This is the ONLY path to a paid call. Never auto-advance.
     func confirmAndCall() {
         guard phase == .confirming, let sid = sessionId else { return }
-        run {
-            try await self.api.confirm(sessionId: sid)
-            self.phase = .calling
-            self.startPolling(sessionId: sid)
+        speech.stopSpeaking()
+        phase = .calling
+        Task {
+            do {
+                try await self.api.confirm(sessionId: sid)
+                self.startPolling(sessionId: sid)
+            } catch {
+                self.errorMessage = F.t("The connection was interrupted. Check the existing call before trying again.", self.language.code)
+                self.phase = .pending
+            }
+        }
+    }
+
+    /// Resume observing the existing session. This never starts a new phone call.
+    func checkStatus() {
+        guard let sid = sessionId else { return }
+        errorMessage = nil
+        Task {
+            do {
+                let s = try await api.fetchSession(sessionId: sid)
+                if s.phase == .pending { try await api.checkStatus(sessionId: sid) }
+                phase = .polling
+                startPolling(sessionId: sid)
+            } catch { errorMessage = F.t(error.localizedDescription, language.code); phase = .pending }
         }
     }
 
@@ -295,6 +326,7 @@ final class SessionViewModel: ObservableObject {
     func reset() {
         pollTask?.cancel()
         speech.stopSpeaking()
+        assistantMessage = nil
         isSubmitting = false
         phase = .idle
         understanding = nil
@@ -307,6 +339,7 @@ final class SessionViewModel: ObservableObject {
         errorMessage = nil
         draftText = ""
         targetNumber = nil
+        selectedBusiness = nil
         sessionId = nil
     }
 
@@ -336,11 +369,11 @@ final class SessionViewModel: ObservableObject {
                         if let o = s.options { self.options = o }
                         if let e = s.errorMessage { self.errorMessage = e }
                     }
-                    if s.phase == .done || s.phase == .failed { break }
+                    if s.phase == .done || s.phase == .failed || s.phase == .pending { break }
                 } catch {
                     await MainActor.run {
-                        self.errorMessage = error.localizedDescription
-                        self.phase = .failed
+                        self.errorMessage = F.t(error.localizedDescription, self.language.code)
+                        self.phase = .pending
                     }
                     break
                 }
@@ -385,7 +418,7 @@ final class SessionViewModel: ObservableObject {
             do { try await work() }
             catch {
                 self.isSubmitting = false
-                self.errorMessage = error.localizedDescription
+                self.errorMessage = F.t(error.localizedDescription, self.language.code)
                 self.phase = .failed
             }
         }

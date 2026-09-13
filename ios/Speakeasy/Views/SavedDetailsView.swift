@@ -4,11 +4,12 @@ import SwiftUI
 /// preferences it decides from, and calendar settings.
 struct SavedDetailsView: View {
     @ObservedObject var store: AppStore
+    var lang: String = "en"
 
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Space.m) {
-                Text("Speakeasy shares these only when a receptionist asks — so the call can finish without calling you back.")
+                Text(F.t("Saved on this device and sent to the calling service with your request. Include only details needed for the task.", lang))
                     .font(.subheadline)
                     .foregroundStyle(Theme.inkSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -44,20 +45,20 @@ struct SavedDetailsView: View {
                 .softCard(Theme.surface)
 
                 // Payment — a spoken note only. We never store or read card numbers.
-                sectionHeader("Payment", "How you'll pay, spoken to the business. Speakeasy never stores or reads card numbers.")
+                sectionHeader("Payment", "Choose a payment method. Do not enter card numbers in any field.")
                 VStack(spacing: 0) {
                     HStack(spacing: Theme.Space.s) {
-                        Image(systemName: "creditcard.fill").font(.subheadline).foregroundStyle(Theme.primary).frame(width: 26)
-                        Text("How you'll pay").font(.subheadline).foregroundStyle(Theme.ink)
+                        Image(systemName: "creditcard.fill").font(.subheadline).foregroundStyle(Theme.actionInk).frame(width: 26)
+                        Text(F.t("How you'll pay", lang)).font(.subheadline).foregroundStyle(Theme.ink)
                         Spacer()
                         Menu {
                             ForEach(["", "Pay on pickup", "Pay on delivery", "Card on file with the business"], id: \.self) { opt in
-                                Button(opt.isEmpty ? "Not specified" : opt) { store.details.payment = opt }
+                                Button(F.t(opt.isEmpty ? "Not specified" : opt, lang)) { store.details.payment = opt }
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Text(store.details.payment.isEmpty ? "Not specified" : store.details.payment)
-                                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.primary)
+                                Text(F.t(store.details.payment.isEmpty ? "Not specified" : store.details.payment, lang))
+                                    .font(.subheadline.weight(.medium)).foregroundStyle(Theme.actionInk)
                                 Image(systemName: "chevron.up.chevron.down").font(.caption2).foregroundStyle(Theme.inkSecondary)
                             }
                         }
@@ -70,7 +71,7 @@ struct SavedDetailsView: View {
                 // Calendar
                 sectionHeader("Calendar", nil)
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
-                    settingToggle("Add bookings to Calendar", "Create a calendar event automatically when an appointment is booked.",
+                    settingToggle("Add bookings to Calendar", "Create an event automatically only when an exact appointment date is confirmed.",
                                   systemImage: "calendar.badge.plus", isOn: $store.autoAddToCalendar)
                     Rectangle().fill(Theme.hairline).frame(height: 1)
                     settingToggle("Use my availability", "Let the agent see your free times so it only asks for slots you're open for.",
@@ -90,7 +91,7 @@ struct SavedDetailsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .softCard(Theme.surface)
 
-                Label("Saved automatically", systemImage: "checkmark.seal.fill")
+                Label(F.t("Saved automatically", lang), systemImage: "checkmark.seal.fill")
                     .font(.footnote)
                     .foregroundStyle(Theme.success)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -103,8 +104,8 @@ struct SavedDetailsView: View {
 
     private func sectionHeader(_ title: String, _ subtitle: String?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.headline).foregroundStyle(Theme.ink)
-            if let subtitle { Text(subtitle).font(.footnote).foregroundStyle(Theme.inkSecondary) }
+            Text(F.t(title, lang)).font(.headline).foregroundStyle(Theme.ink)
+            if let subtitle { Text(F.t(subtitle, lang)).font(.footnote).foregroundStyle(Theme.inkSecondary) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Theme.Space.xs)
@@ -114,11 +115,11 @@ struct SavedDetailsView: View {
     private func settingToggle(_ title: String, _ subtitle: String, systemImage: String, isOn: Binding<Bool>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle(isOn: isOn) {
-                Label(title, systemImage: systemImage)
+                Label(F.t(title, lang), systemImage: systemImage)
                     .font(.body.weight(.medium)).foregroundStyle(Theme.ink)
             }
             .tint(Theme.primary)
-            Text(subtitle).font(.footnote).foregroundStyle(Theme.inkSecondary)
+            Text(F.t(subtitle, lang)).font(.footnote).foregroundStyle(Theme.inkSecondary)
         }
     }
 
@@ -130,10 +131,10 @@ struct SavedDetailsView: View {
         HStack(spacing: Theme.Space.s) {
             ZStack {
                 Circle().fill(Theme.primary.opacity(0.12)).frame(width: 34, height: 34)
-                Image(systemName: icon).font(.footnote.weight(.semibold)).foregroundStyle(Theme.primary)
+                Image(systemName: icon).font(.footnote.weight(.semibold)).foregroundStyle(Theme.actionInk)
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(label).font(.caption).foregroundStyle(Theme.inkSecondary)
+                Text(F.t(label, lang)).font(.caption).foregroundStyle(Theme.inkSecondary)
                 TextField(placeholder, text: binding)
                     .font(.body).foregroundStyle(Theme.ink)
                     .keyboardType(keyboard)

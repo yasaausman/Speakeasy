@@ -95,6 +95,7 @@ export function isTerminalStatus(status: string | undefined): boolean {
 
 // ── Speakeasy's normalized final result (build-plan section 6) ───────────────
 export type CallOutcomeStatus =
+  | "pending"
   | "completed"
   | "failed"
   | "no_answer"
@@ -105,6 +106,7 @@ export type CallOutcomeStatus =
   | "expired";
 
 export type CallResult = {
+  runId?: string; // permits read-only monitoring after a timeout; never redial
   status: CallOutcomeStatus;
   rawStatus: string; // the exact terminal status CALL-E returned
   outcome: string; // human-readable, English (from summary)

@@ -9,6 +9,7 @@ export type SessionPhase =
   | "calling"
   | "polling"
   | "narrating"
+  | "pending" // call may still be active; only read-only recovery is allowed
   | "done"
   | "failed";
 
@@ -31,10 +32,14 @@ export interface GoalUnderstanding {
 /** CallResult (from server/calle) plus the translated narration for the user. */
 export interface NarratedResult extends CallResult {
   outcomeUserLang: string | null;
+  appointmentUserLang?: string;
+  evidenceUserLang?: string[];
+  gapsUserLang?: string[];
 }
 
 /** One place's result in a multi-call comparison (C1). */
 export interface RankedResult {
+  business?: FoundBusiness;
   number: string;
   result: NarratedResult;
 }
@@ -42,7 +47,7 @@ export interface RankedResult {
 export type SessionMode = "single" | "multi";
 
 /** How the agent should book: place a real booking, or just find available times. */
-export type CallIntent = "book" | "discover";
+export type CallIntent = "book" | "discover" | "compare";
 
 /** Front-loaded booking preferences — the agent decides from these instead of
  *  putting anyone on hold (there is no live hold; CALL-E is one-shot async). */
@@ -67,6 +72,7 @@ export interface Session {
   mode: SessionMode;
   intent: CallIntent;
   userLang: LangCode;
+  preparing?: boolean; // blocks confirmation or a second submission while translating
   originalText?: string; // the user's goal in their own language
   englishGoal?: string; // translated goal
   brief?: CallBrief; // the English brief handed to CALL-E (single mode)

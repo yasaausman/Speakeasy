@@ -43,7 +43,7 @@ struct AppLanguage: Identifiable, Hashable {
 
 // MARK: - Orchestrator state machine phase
 enum SessionPhase: String, Codable {
-    case idle, collecting, confirming, calling, polling, narrating, done, failed
+    case idle, collecting, confirming, calling, polling, narrating, pending, done, failed
 }
 
 // MARK: - Understood goal shown to confirm before any call
@@ -65,7 +65,7 @@ struct FoundBusiness: Codable, Equatable, Identifiable {
 
 // MARK: - Normalized call result (mirrors server/calle/types.ts::CallResult)
 enum CallOutcomeStatus: String, Codable {
-    case completed, failed, no_answer, voicemail, declined, busy, canceled, expired
+    case completed, failed, no_answer, voicemail, declined, busy, canceled, expired, pending
 }
 
 struct ConfidenceInfo: Codable, Equatable {
@@ -86,12 +86,21 @@ struct CallResult: Codable, Equatable {
     let evidence: [String]?
     let gaps: [String]?
     let taskCompleted: Bool?
+    var appointmentUserLang: String? = nil
+    var runId: String? = nil
+    var evidenceUserLang: [String]? = nil
+    var gapsUserLang: [String]? = nil
+
+    var isSuccessful: Bool { status == .completed && taskCompleted == true && (gaps ?? []).isEmpty }
+    var needsInformation: Bool { !(gaps ?? []).isEmpty }
+    var canRetry: Bool { status != .pending && !isSuccessful }
 }
 
 // MARK: - One place's result in a multi-call comparison (C1)
 struct RankedResult: Codable, Equatable, Identifiable {
     let number: String
     let result: CallResult
+    var business: FoundBusiness? = nil
     var id: String { number }
 }
 

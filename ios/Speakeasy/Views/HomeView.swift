@@ -16,24 +16,34 @@ struct HomeView: View {
                 confirmView
             case .calling, .polling, .narrating:
                 callingView
-            case .done:
+            case .done, .pending:
                 if let options = vm.options, !options.isEmpty {
                     SlotPickerView(options: options,
                                    intro: vm.result?.outcomeUserLang ?? vm.result?.outcome,
+                                   lang: vm.language.code,
                                    onPick: { vm.pickSlot($0) },
                                    onDone: vm.reset)
                 } else if let ranked = vm.ranked {
-                    RankedResultsView(ranked: ranked, winnerReason: vm.winnerReason,
+                    RankedResultsView(ranked: ranked, winnerReason: vm.winnerReason, lang: vm.language.code,
+                                      onCheck: vm.checkStatus,
                                       onReplay: { vm.speakResult() },
                                       onBook: { vm.bookWinner(number: $0) },
                                       onDone: vm.reset)
                 } else if let r = vm.result {
                     ResultCardView(result: r, store: vm.store,
+                                   business: vm.understanding?.businesses?.first, onCheck: vm.checkStatus,
                                    phoneNumber: vm.understanding?.targetNumber,
                                    lang: vm.language.code,
                                    onReplay: { vm.toggleNarration() }, isSpeaking: vm.speech.isSpeaking,
                                    onRetry: vm.retry,
                                    onAnswerGap: { vm.answerGap($0, value: $1) }, onDone: vm.reset)
+                } else if vm.phase == .pending {
+                    VStack(spacing: Theme.Space.m) {
+                        Label(F.t("Outcome pending", vm.language.code), systemImage: "clock").font(.title2)
+                        Text(F.t("The call may still be active. Checking its status will not place another call.", vm.language.code))
+                        if let error = vm.errorMessage { Text(error).font(.subheadline) }
+                        Button(F.t("Check status", vm.language.code), action: vm.checkStatus).buttonStyle(PrimaryPill())
+                    }.padding(Theme.Space.l)
                 }
             }
         }
@@ -43,7 +53,7 @@ struct HomeView: View {
 
     // MARK: Input
     private var inputView: some View {
-        VStack(spacing: Theme.Space.l) {
+        ScrollView { VStack(spacing: Theme.Space.l) {
             Spacer(minLength: Theme.Space.m)
 
             VoiceOrb(isListening: vm.speech.isListening,
@@ -63,12 +73,12 @@ struct HomeView: View {
                 if vm.isSubmitting {
                     HStack(spacing: 10) {
                         ProgressView().tint(Theme.primary)
-                        Text("Understanding…")
+                        Text(F.t("Understanding…", vm.language.code))
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(Theme.ink)
                     }
                 } else if vm.speech.isListening {
-                    Text(vm.speech.partialText.isEmpty ? "Listening…" : vm.speech.partialText)
+                    Text(vm.speech.partialText.isEmpty ? F.t("Listening…", vm.language.code) : vm.speech.partialText)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
@@ -104,6 +114,7 @@ struct HomeView: View {
                 HStack(spacing: Theme.Space.s) {
                     TextField(HomeStrings.inputPlaceholder(for: vm.language.code), text: $vm.draftText, axis: .vertical)
                         .font(.body)
+                        .lineLimit(1...4)
                         .foregroundStyle(Theme.ink)
                         .padding(.vertical, 14).padding(.horizontal, 18)
                         .background(Capsule().fill(Theme.surface))
@@ -111,11 +122,11 @@ struct HomeView: View {
                         .toolbar {
                             ToolbarItemGroup(placement: .keyboard) {
                                 Spacer()
-                                Button("Done") { hideKeyboard() }
+                                Button(F.t("Done", vm.language.code)) { hideKeyboard() }
                             }
                         }
 
-                    Button { vm.submitGoal(vm.draftText) } label: {
+                    Button { hideKeyboard(); vm.submitGoal(vm.draftText) } label: {
                         Image(systemName: "arrow.up")
                             .font(.headline.weight(.bold))
                             .foregroundStyle(.white)
@@ -123,6 +134,8 @@ struct HomeView: View {
                             .background(Circle().fill(sendDisabled ? Theme.inkSecondary.opacity(0.4) : Theme.primary))
                             .shadow(color: sendDisabled ? .clear : Theme.primary.opacity(0.35), radius: 12, y: 6)
                     }
+                    .accessibilityIdentifier("send-goal")
+                    .accessibilityLabel(F.t("Send answer", vm.language.code))
                     .disabled(sendDisabled)
                     .animation(.easeInOut, value: isEmpty)
                 }
@@ -134,7 +147,7 @@ struct HomeView: View {
                     HStack(alignment: .top, spacing: Theme.Space.xs) {
                         Image(systemName: "quote.bubble.fill")
                             .font(.title3)
-                            .foregroundStyle(Theme.primary)
+                            .foregroundStyle(Theme.actionInk)
                             .accessibilityHidden(true)
                         Text(msg)
                             .font(.subheadline)
@@ -144,12 +157,12 @@ struct HomeView: View {
                         Button { vm.replayAssistant() } label: {
                             Image(systemName: "speaker.wave.2.fill")
                                 .font(.subheadline)
-                                .foregroundStyle(Theme.primary)
+                                .foregroundStyle(Theme.actionInk)
                                 .frame(width: 34, height: 34)
                                 .background(Circle().fill(Theme.primary.opacity(0.12)))
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Play aloud")
+                        .accessibilityLabel(F.t("Play aloud", vm.language.code))
                     }
                     .padding(.vertical, 14).padding(.horizontal, 16)
                     .softCard(Theme.surface)
@@ -184,15 +197,17 @@ struct HomeView: View {
                     if value.translation.height > 40 { hideKeyboard() }
                 }
         )
+        }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     // MARK: Confirm gate
     private var confirmView: some View {
-        VStack(spacing: Theme.Space.l) {
+        ScrollView { VStack(spacing: Theme.Space.l) {
             Spacer()
             ZStack {
                 Circle().fill(Theme.primary.opacity(0.14)).frame(width: 84, height: 84)
-                Image(systemName: "quote.bubble.fill").font(.system(size: 34, weight: .semibold)).foregroundStyle(Theme.primary)
+                Image(systemName: "quote.bubble.fill").font(.system(size: 34, weight: .semibold)).foregroundStyle(Theme.actionInk)
             }
             Text(L.t(.confirmTitle, vm.language.code)).font(.title.weight(.bold)).foregroundStyle(Theme.ink)
 
@@ -225,7 +240,7 @@ struct HomeView: View {
                                 Text(u.businesses?.first.map { "\($0.name) · \($0.phone)" } ?? u.targetNumber)
                                 Image(systemName: "pencil").font(.caption2)
                             }
-                            .font(.subheadline.weight(.medium)).foregroundStyle(Theme.primary)
+                            .font(.subheadline.weight(.medium)).foregroundStyle(Theme.actionInk)
                         }
                         if let addr = u.businesses?.first?.address {
                             Text(addr).font(.caption).foregroundStyle(Theme.inkSecondary)
@@ -233,16 +248,26 @@ struct HomeView: View {
                     }
                 }
 
+                DisclosureGroup(F.t("Details shared for this call", vm.language.code)) {
+                    if vm.store.details.asFacts.isEmpty {
+                        Text(F.t("No saved details attached", vm.language.code)).font(.subheadline)
+                    }
+                    ForEach(vm.store.details.asFacts.keys.sorted(), id: \.self) { key in
+                        Text("\(key): \(vm.store.details.asFacts[key] ?? "")")
+                            .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }.font(.subheadline).padding(.vertical, 8)
+
                 // Editable brief: add a detail before calling.
                 if showNote {
                     HStack(spacing: Theme.Space.s) {
-                        TextField("e.g. mornings only, take Medicaid", text: $noteText)
+                        TextField(F.t("e.g. mornings only, take Medicaid", vm.language.code), text: $noteText)
                             .font(.subheadline).foregroundStyle(Theme.ink)
                             .padding(.vertical, 10).padding(.horizontal, 14)
                             .background(Capsule().fill(Theme.surface))
                             .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1))
-                        Button("Add") { vm.amend(noteText); noteText = ""; showNote = false }
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.primary)
+                        Button(F.t("Add", vm.language.code)) { vm.amend(noteText); noteText = ""; showNote = false }
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.actionInk)
                             .disabled(noteText.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                     .padding(.horizontal, Theme.Space.xs)
@@ -264,7 +289,9 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, Theme.Space.l)
+        .disabled(vm.isSubmitting)
         .padding(.bottom, Theme.Space.l)
+        }
         .sheet(isPresented: $showNumberSheet) {
             ChangeNumberSheet(current: vm.targetNumber ?? "") { number in
                 vm.targetNumber = number
@@ -279,11 +306,11 @@ struct HomeView: View {
             HStack(spacing: Theme.Space.s) {
                 ZStack {
                     Circle().fill(Theme.primary.opacity(0.14)).frame(width: 52, height: 52)
-                    Image(systemName: "phone.connection.fill").font(.title3).foregroundStyle(Theme.primary)
+                    Image(systemName: "phone.connection.fill").font(.title3).foregroundStyle(Theme.actionInk)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(L.t(.onTheCall, vm.language.code)).font(.headline).foregroundStyle(Theme.ink)
-                    Text(vm.statusLine ?? L.t(.connecting, vm.language.code)).font(.subheadline).foregroundStyle(Theme.inkSecondary)
+                    Text(vm.language.code == "en" ? (vm.statusLine ?? L.t(.connecting, vm.language.code)) : F.t("A call in English, an answer in your language.", vm.language.code)).font(.subheadline).foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
                 ProgressView().tint(Theme.primary)
@@ -319,10 +346,10 @@ struct HomeView: View {
     @ViewBuilder private func transcriptLine(_ line: String) -> some View {
         if let range = line.range(of: "Bot:") {
             bubble(String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces),
-                   speaker: "Agent", tint: Theme.primary, align: .leading)
+                   speaker: F.t("Agent", vm.language.code), tint: Theme.primary, align: .leading)
         } else if let range = line.range(of: "Rep:") {
             bubble(String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces),
-                   speaker: "Them", tint: Theme.accent, align: .trailing)
+                   speaker: F.t("Them", vm.language.code), tint: Theme.accent, align: .trailing)
         } else {
             Text(line)
                 .font(.footnote).foregroundStyle(Theme.inkSecondary)
@@ -362,7 +389,7 @@ struct HomeView: View {
                     HStack(spacing: 8) {
                         Image(systemName: s.icon)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.primary)
+                            .foregroundStyle(Theme.actionInk)
                         Text(label)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(Theme.ink)
@@ -408,7 +435,7 @@ struct ErrorBanner: View {
         HStack(alignment: .top, spacing: Theme.Space.xs) {
             Image(systemName: "exclamationmark.bubble.fill")
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(Theme.accentInk)
                 .accessibilityHidden(true)
 
             Text(message)

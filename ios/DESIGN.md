@@ -79,3 +79,9 @@ full-i18n pass.
 
 Recorded in `Design/Theme.swift`'s opening comment. Direction evolved
 warm → calm-blue → **playful & vibrant** (user-pinned sky-blue with a mascot orb).
+
+## September 13 outcome and Hindi pass
+
+The current design keeps the sky-blue orb and rounded surfaces. Home and confirmation scroll when space is constrained. Result colors and celebration reflect task completion, not simply the end of a call. Pending outcomes offer read-only status checks; successful results omit the retry action. Business identity and reported appointment time are promoted, and relative dates open a review sheet. Hindi task/recovery labels are in FlowStrings.swift; English transcript content is explicitly labeled. Debug rehearsals display a persistent simulated-call banner.
+
+Validation and known gaps are recorded in ../docs/submission/VERIFICATION.md. Do not interpret this design note as a blanket accessibility certification.

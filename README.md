@@ -2,242 +2,156 @@
 
 [![CI](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml/badge.svg)](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml)
 
-**Speak or type what you need, in your language. Speakeasy finds the business, makes the English phone call, finishes the task, and tells you out loud — and in text — what happened, in your language.**
+**Book everyday appointments in your language—even when the business only speaks English.**
 
-Just say *"book me a dentist near me"* or *"order from Dave's Hot Chicken"* — Speakeasy detects your language, looks up the real number, and calls. You never dial, and you never need to know the number.
+Speak or type a request, review the business and the plan, and approve the call. Speakeasy uses CALL-E to handle the English conversation, then explains the outcome in your language through text and speech.
 
-Built for the [CALL-E "Your Code Is Calling"](https://devpost.com) hackathon. CALL-E places and holds the live English phone call; Speakeasy is the language bridge and the app around it — a **native iOS app** backed by a small Node service.
+Built for **CALL-E: Your Code Is Calling**. The headline demo focuses on a Hindi-speaking appointment user. The working name remains Speakeasy while the team considers [name options](docs/submission/NAME-OPTIONS.md).
 
-## Why it's defensible — the four-part wedge
+## The experience
 
-No existing product sits on all four at once:
+1. **Ask in your language.** Native iOS speech recognition or typed input.
+2. **Review before calling.** Business name, number, address when available, translated readback, and the saved details attached to the request.
+3. **Approve.** The backend's confirmation gate starts the CALL-E workflow.
+4. **Follow the call.** Status and English transcript snippets arrive through polling.
+5. **Understand the outcome.** A completed task, a request for missing information, or an uncertain outcome that needs checking.
 
-1. **Language-first UX** — built around *not* speaking English, not a language flag bolted onto an English app.
-2. **Voice and text in, voice and text out** — both modes, both directions.
-3. **Actually finishes the task** — books, confirms, and captures the reference number. Not just a price lookup.
-4. **Built for the underserved user** — limited English, phone anxiety, disability, or no time during business hours.
+Example Hindi request:
+> मेरे लिए मंगलवार दोपहर तीन बजे दाँतों की जाँच का अपॉइंटमेंट बुक कर दीजिए। अगर तीन बजे समय न मिले, तो साढ़े तीन बजे भी ठीक है।
 
-## What you can ask it to do
+“Book a dental checkup Tuesday at 3 p.m. If 3 isn't available, 3:30 is fine too.”
 
-You never dial and never need the number. You say (or type) what you want **in your
-language**; Speakeasy detects the language, infers the *mode* (book one thing /
-compare a few / discover availability), looks up the real business, shows you the
-**name · number · address** at the confirm gate, and only calls after your "yes".
-Facts the rep is likely to ask for (name, callback, insurance, DOB) are pulled from
-**Your details** and front-loaded into the brief so the agent can answer without you.
+This is an example request, not a claim that an appointment has been made.
 
-| You say (any language) | Inferred mode | What Speakeasy does |
-| --- | --- | --- |
-| "Book me a haircut tomorrow at 3" | **book** | One salon, one call, captures the confirmed time |
-| "Order 2 chicken shawarma from Halal Guys for pickup" | **book** | Places the order; conveys *pay on pickup* — never a card number |
-| "Find a good pediatrician near me that takes Medicaid" | **compare** | Calls a few, ranks by fit, one-tap **book the winner** |
-| "What times does the barber have open Saturday?" | **discover** | Collects open slots, books nothing until you pick |
-| "Confirm my Tuesday 9:40 dentist appointment is still on" | **book** | Follow-up/verification call, reports back |
-| "Reschedule my haircut to Friday morning" | **book** | Calls the salon, moves the slot, updates the result |
+## Three workflows
 
-### Worked examples
+| Workflow | Behavior |
+|---|---|
+| Book | Perform a task with one business, using supplied constraints and fallback preferences. |
+| Compare | Ask several businesses for information. Briefs explicitly prohibit bookings, orders and other commitments. Review an option before a separate booking call. |
+| Discover | Collect available times without booking; select a slot and review the next call. The app retains the original business number. |
 
-Each shows the four things that matter: **what you say**, **what the confirm gate
-shows before anything dials**, **what's front-loaded** from your vault, and **the
-result** you get back — on-screen in your language and spoken aloud.
-
-**1 · Haircut / salon appointment** *(book)*
-- **You say (Spanish):** *"Resérvame un corte de pelo para mañana a las 3."*
-- **Confirm gate:** `Joe's Barbershop · +1 512-555-0140 · 100 Main St, Austin, TX`
-- **Front-loaded:** your name + callback number.
-- **Result:** *"Booked — tomorrow 3:00pm with Joe's. Confirmation 4471."* Add-to-Calendar offered.
-
-**2 · Placing a food order** *(book)*
-- **You say (Hindi):** *"Halal Guys se do chicken shawarma pickup ke liye order karo."*
-- **Confirm gate:** the restaurant name · number · address; your **payment preference** shown as *pay on pickup*.
-- **Front-loaded:** name + callback; **no card data — ever** (the brief forbids the agent from reading card numbers aloud).
-- **Result:** *"Order placed — 2 chicken shawarma, ready ~20 min, pay at pickup."*
-
-**3 · Doctor / dentist / clinic appointment** *(book, facts-heavy)*
-- **You say (Arabic, RTL UI):** *"احجز لي موعد أسنان الأسبوع القادم صباحًا."*
-- **Confirm gate:** the clinic name · number · address.
-- **Front-loaded:** insurance carrier + member ID, DOB, callback — so when the rep asks "what insurance?", the agent answers without calling you back.
-- **Result:** *"Booked Tuesday 9:40am with Dr. Lee; they accept your insurance. Confirmation 4471."* (This is the shape in [`docs/sample-run.json`](docs/sample-run.json).)
-
-**4 · Hospital / find the best clinic and book it** *(compare → book the winner)*
-- **You say (Vietnamese):** *"Tìm một phòng khám nhi tốt gần đây nhận Medicaid."*
-- **What happens:** fans out **3 parallel calls**, Gemini ranks the outcomes for your goal ("takes Medicaid, soonest"), the app shows a ranked list with the best option highlighted — one tap places the booking call.
-- **Result:** a ranked comparison, then the booking confirmation for the winner.
-
-**5 · Following up on / confirming an appointment** *(book)*
-- **You say:** *"Call the clinic and check my Tuesday 9:40 appointment is still on."*
-- **Confirm gate:** the clinic you're calling.
-- **Result:** *"Confirmed — Tuesday 9:40am with Dr. Lee is still booked."* If it changed, the gap card surfaces what the rep asked and lets you answer + retry.
-
-**6 · Availability-first, decide later** *(discover)*
-- **You say:** *"I'm flexible — what haircut times are open this weekend?"*
-- **What happens:** the call collects open slots and **books nothing**; you pick a slot, and a **second call** books it (speculative two-call booking).
-
-**7 · Government appointments — SSN / driver's license (DMV)** *(book / discover)*
-- **You say:** *"Book me a Social Security card appointment"* or *"Get me a DMV appointment for a license renewal."*
-- **What Speakeasy does:** infers the goal, front-loads the identifying facts the office asks for, and surfaces the office at the confirm gate before dialing.
-- **Honest limitation:** many government lines are **automated IVR menus with long holds**, not a live rep. CALL-E holds a *live English conversation* well; deep phone-tree navigation and hour-long holds are a **known weak spot** and the target of the deferred *callback-camping* work (see the Roadmap and [MILESTONES.md](MILESTONES.md)). Speakeasy will report honestly if it hits a menu it can't complete rather than pretend success — completion is judged from the summary/evidence, not the raw `COMPLETED` status.
-
-> **Every one of these** is gated: nothing dials until you approve the business shown
-> on the confirm screen, the caller always discloses it's an AI acting on your behalf,
-> and card numbers are never stored or spoken. See **[Guardrails](#guardrails-non-negotiable)**.
+Additional features: local saved details, history, payment-method preferences, calendar free/busy context, text-only mode, and Arabic right-to-left layout. Twelve languages are selectable. Speech availability depends on Apple's language/device support. Localization coverage varies; Hindi received an additional task/recovery pass.
 
 ## Architecture
 
-```
-┌─────────────────────────┐        ┌──────────────────────────┐        ┌──────────┐
-│  iOS app (SwiftUI)       │  HTTP  │  Node backend            │  MCP   │  CALL-E  │
-│  • tap-to-talk / type    │ ─────▶ │  • intent classify +     │ ─────▶ │  places  │
-│  • auto-detect language  │        │    business search       │        │  the real│
-│  • location ("near me")  │        │  • orchestrator + confirm│        │  call    │
-│  • confirm gate          │ ◀───── │  • server/calle/ client  │ ◀───── │          │
-│  • native STT/TTS        │  poll  │    (OAuth, plan/run/poll) │        └──────────┘
-└─────────────────────────┘        └──────────────────────────┘
-```
-
-Why the split: CALL-E's phone layer needs OAuth, the MCP client, and a token cache —
-that can't live in the app, so it stays on the Node service. The iOS app never speaks
-MCP; it only calls the backend over HTTP. Voice (STT/TTS) is **native on-device iOS**,
-so the app's voice layer needs no third-party keys.
-
-## The CALL-E contract (ground truth)
-
-The backend talks to CALL-E's OAuth-protected MCP endpoint over Streamable HTTP, using three tools in strict order:
-
-| Tool | Purpose | Key I/O |
-| --- | --- | --- |
-| `plan_call` | Prepare a call plan (no call placed) | in: `user_input` (+ `to_phones`, `region`, `language`, `goal`); out: `plan_id`, `confirm_token`, `ready_to_run` |
-| `run_call` | Place the real call | in: `plan_id`, `confirm_token`; out: `run_id`, `status` |
-| `get_call_run` | Poll status/result (read-only) | in: `run_id`; out: `status`, `summary`, `details`, `transcript` |
-
-Poll cadence: first check ~60s after `run_call`, then every 5–10s until a terminal status
-(`COMPLETED`, `FAILED`, `NO_ANSWER`, `DECLINED`, `CANCELED`, `VOICEMAIL`, `BUSY`, `EXPIRED`).
-`COMPLETED` means the run ended — success is judged from the summary/details, not the status alone.
-
-## Milestones
-
-> The full, up-to-date checklist of everything built and what's left lives in
-> **[MILESTONES.md](MILESTONES.md)**. A candid, evidence-anchored self-assessment
-> against the hackathon rubric is in **[SELF-JUDGING.md](SELF-JUDGING.md)**.
-
-### ✅ Done
-
-- **M0 · CALL-E proven** — `server/calle/` client (types, OAuth transport, `CalleClient`) drives `plan_call → run_call → poll get_call_run` and normalizes to a `CallResult`. `scripts/smoke-call.ts` runs the full workflow; **dry-run green** and **real calls verified** (OAuth authenticated, live call placed). Flip with `CALLE_MODE=real`.
-- **M1 · iOS app shell** — SwiftUI app runs in the simulator (iPhone 17 Pro, iOS 26.5). Full loop verified on-device: goal → **confirm gate** → call → **result card**.
-- **A1 · Backend API + orchestrator** — Fastify service (`POST /api/sessions`, `/goal`, `/confirm`, `GET /api/sessions/:id`) over the `server/calle/` client + the state-machine (confirm gate, background poll loop). Verified end-to-end with the fake transport — **zero calls**.
-- **A2 · App wired to the backend** — app defaults to `LiveSpeakeasyAPI`; verified in the simulator app ⇄ backend ⇄ CALL-E (dry-run): goal → readback from the orchestrator → confirm → result card with confirmation number.
-- **Multi-language** — **12 languages** (English, Spanish, Chinese, Hindi, Arabic, Vietnamese, French, Portuguese, Korean, Tagalog, Russian, Haitian Creole). Searchable picker; **RTL layout** for Arabic. All via the backend translation layer.
-- **App features** — burger-menu navigation; **live call transcript** streamed during the call (chat bubbles); **Your details** vault (name/insurance/DOB/… auto-attached so the agent can answer the rep); **call history** (persisted); **Add to Calendar** (EventKit) from a booked appointment; a "How it works" onboarding screen.
-- **Trust & completion** — **confidence + evidence badge** on results; **gap-surfacing** (when the rep needs info you didn't provide) with **Try again**; **editable brief** on the confirm screen (add a detail, change/pick the number from Contacts); **text-forward mode** (Deaf/HoH — no audio); **book the winner** one-tap after a comparison.
-- **A3 · First real call** ☎️ — a real CALL-E call completed end-to-end (`COMPLETED`, real transcript, task confirmed). Fixed auth (reuse the `calle` CLI token) and result extraction (CALL-E nests `result.{summary,transcript}`) along the way.
-- **A4 · Live translation** — Gemini wired (`gemini-flash-latest`); verified in the app: English goal → real Spanish/Hindi/Arabic readback + narration, both directions. `.env` auto-loaded by the backend.
-- **B1 · Voice in** 🎙️ — press-and-hold mic → `SFSpeechRecognizer` (native, on-device STT) → transcript rejoins the pipeline. Permission flow verified in the simulator.
-- **B2 · Voice out** 🔊 — `AVSpeechSynthesizer` (native TTS) speaks the readback and the result in the user's language; confirmation numbers read digit-by-digit; "Play narration" replays. Verified end-to-end.
-- **C1 · Multi-call comparison** 🏆 — fans out N calls in parallel, Gemini ranks the outcomes for any goal ("soonest"/"cheapest"/…), and the app shows a ranked list + a highlighted best option, narrated aloud in the user's language.
-- **Finds the number for you** 🔎 — business lookup via **Gemini Google-Search grounding** turns a goal + your location into real phone numbers. The confirm gate shows the business **name · number · address** before anything dials — so a wrong lookup never places a call. No need to know the number.
-- **Infers the mode** — the backend classifies each goal into **book** (a specific task), **compare** (a recommendation / "which is best" → call a few and rank), or **discover** (availability-first). The old mode toggles are gone; you just say what you want.
-- **Auto-detects your spoken language** — `NLLanguageRecognizer` picks up the language from the transcript, and the readback, translation, and voice follow it. Seeds from the device language; the picker still works as a manual override.
-- **Location-aware** 📍 — CoreLocation resolves a coarse "City, ST" for "near me" lookups (permission-gated; a lookup still works without it, just less targeted).
-- **Answers in text *and* audio** — every agent answer shows on-screen in your language and is spoken aloud (text-only in text-forward mode), with a play/stop replay.
-- **Safe payments** 💳 — a **Pay on pickup / delivery / card-on-file** preference the agent conveys out loud. Speakeasy **never stores or reads card numbers** — the brief explicitly forbids it.
-- **Runs on a physical iPhone** 📱 — signed with a personal team, installed over Wi-Fi, real on-device STT verified. A startup banner shows the live CALL-E mode + providers, with a loud warning when real calls are armed.
-
-### ⬜ To do
-
-- **Record the ~3-minute demo video** and **submit the Devpost form.** The submission PR to [`CALLE-AI/awesome-phone-call-agents`](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/449) is already open and passing their validator.
-
-## Layout
-
-```
-ios/                  native SwiftUI app (see ios/README.md)
-  project.yml         XcodeGen spec → generates Speakeasy.xcodeproj
-  Speakeasy/          app sources (Models, Networking, ViewModels, Views, Speech)
-server/
-  index.ts            Fastify HTTP API the app calls
-  calle/              the ONLY place that touches CALL-E MCP
-    client.ts         CalleClient: planCall/runCall/getCallRun, pollRun, runBrief
-    oauth.ts          Streamable-HTTP + OAuth transport (token cache under .speakeasy/)
-    types.ts          CallBrief, CallResult, real tool I/O, terminal statuses
-  orchestrator/       session store + state machine (confirm gate, poll loop)
-  search/             business lookup (Gemini Google-Search grounding + mock)
-  language/           languages, translation, intent classifier, ranker, slots
-                      (Gemini > OpenAI > offline passthrough/heuristics)
-scripts/
-  smoke-call.ts       CALL-E end-to-end smoke test (fake by default, --real to call)
+```text
+SwiftUI iOS app
+  Apple speech recognition/synthesis · location · calendar · local history
+        │ HTTP / session polling
+TypeScript + Fastify backend
+  translation · intent · business search · call orchestration
+        │ OAuth + Streamable HTTP MCP
+CALL-E
+  plan_call → run_call → get_call_run
 ```
 
-## Verify it works (one command, zero infrastructure)
+CALL-E owns the phone conversation. Translation handles the user's request, readback and result; this is not live translation of the phone audio.
 
-No Mac, Xcode, API keys, or real calls needed — the CALL-E layer runs on a fake
-transport and the language layer runs offline. On any machine with Node:
+Gemini provides translation, Google Search-grounded business lookup, intent classification, ranking and slot extraction. OpenAI alternatives exist for translation, ranking and extraction. **Business search and intent classification do not have an OpenAI implementation.** Without provider keys, offline doubles preserve the wiring but do not perform real translation or real business search.
+
+## Verify without calls or API keys
+
+Node 20.12+ and npm:
 
 ```bash
-npm install
-npm test            # 20 deterministic tests (flows, guardrails, errors, status norm.) (<1s)
-npm run smoke:fake  # full plan → run → poll → normalized result
+npm ci
+npm run check
+npm test
+npm run smoke:fake
 ```
 
-`npm test` asserts the headline flows — **booking, gap→complete, multi-call
-ranking, and speculative discover→slots** — plus lookup, preferences composing into
-the brief, **three guardrail tests** (no card-like number ever reaches the plan input,
-the AI disclosure is always the first line, the agent is told never to guess),
-**error paths** (unknown session, confirm-before-readback, no-number lookup), and
-**CALL-E status-normalization** breadth (VOICEMAIL/BUSY/NO_ANSWER, "COMPLETED ≠
-success", confirmation extraction). The iOS app also has a **UI smoke test**
-([`ios/SpeakeasyUITests/`](ios/SpeakeasyUITests/)). The Node commands run in
-[CI](.github/workflows/ci.yml) on every push.
-A **synthetic** sample result (reserved fictional data) showing the shape of a
-completed run is at [`docs/sample-run.json`](docs/sample-run.json), and two
-reproducible integration issues we reported upstream are written up in
-[`docs/CALLE-INTEGRATION-FEEDBACK.md`](docs/CALLE-INTEGRATION-FEEDBACK.md).
-(No real call transcripts or identifiers are committed to this repository.)
+The fake smoke command explicitly overrides real mode, even if `.env` contains `CALLE_MODE=real`. Fixtures use fictional data. A green smoke run proves the transport workflow, not a real booking. The fake transport currently models appointment scenarios rather than arbitrary user goals.
 
-## Run it (app + backend, no calls)
+The tests cover booking, missing details, inquiry-only comparisons, discovery, pending-call recovery without redialing, terminal-status normalization, sensitive-input rejection, operational log filtering, and translation failure after a completed call.
 
-1. **Start the backend** (uses the fake CALL-E transport by default — zero calls):
+Current validation details: [VERIFICATION.md](docs/submission/VERIFICATION.md).
 
-   ```bash
-   npm install
-   cp .env.example .env
-   npm run dev            # Fastify on :3000
-   ```
+## Run the iOS app
 
-2. **Run the app** (the simulator reaches the Mac's `localhost:3000`):
-
-   ```bash
-   cd ios && xcodegen generate
-   xcodebuild -project Speakeasy.xcodeproj -scheme Speakeasy \
-     -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -derivedDataPath build build
-   xcrun simctl boot "iPhone 17 Pro"; open -a Simulator
-   xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/Speakeasy.app
-   xcrun simctl launch booted com.speakeasy.app
-   ```
-
-   Type a goal → confirm → watch the (fake) call complete → result card. Pick a language
-   from the globe menu; Arabic switches the UI to RTL.
-
-**Real language + search:** set `GEMINI_API_KEY` in `.env` (or `OPENAI_API_KEY`) to power **translation**, **business-number search** (Google-Search grounding), and **intent classification**. Without a key everything falls back to offline passthrough/heuristics/mock numbers, so the app still runs. Providers are auto-selected Gemini > OpenAI > offline; the backend logs which on startup.
-
-**Real calls (go-live).** First authenticate the `calle` CLI and place one harmless self-test call to your own phone (also proves auth):
+Requires Xcode, an iOS simulator or signed physical device, and XcodeGen.
 
 ```bash
-SMOKE_TARGET_NUMBER=+1yourphone npm run smoke:real
+xcodegen generate --spec ios/project.yml
+open ios/Speakeasy.xcodeproj
 ```
 
-Then set `CALLE_MODE=real` in `.env` and `npm run dev`. The startup banner shows `calle=real` and warns that confirmed goals now place **real** calls. The **confirm gate** still guards every call — nothing dials without your explicit "yes."
+The normal app uses the backend. Start a fully offline backend explicitly:
 
-**On a physical device:** the app points at `http://localhost:3000`, which is the *phone itself* on-device — set the backend's LAN IP + an ATS exception (see [ios/README.md](ios/README.md)). The simulator needs no change.
+```bash
+CALLE_MODE=fake GEMINI_API_KEY='' OPENAI_API_KEY='' npm run dev
+```
 
-**iOS project details:** see [ios/README.md](ios/README.md).
+The simulator defaults to `http://localhost:3000`. For an iPhone, set the Xcode scheme environment variable `SPEAKEASY_BACKEND_URL` or the Info.plist `SpeakeasyBackendURL` key to your Mac's LAN URL, on the same Wi-Fi. This is a local-development service, not an authenticated public deployment.
 
-## Guardrails (non-negotiable)
+### Labeled Hindi UI rehearsal
 
-- **Confirm gate:** no paid call goes out without an explicit user "yes" — a mistranslation must never cost a call.
-- **AI disclosure:** every brief identifies the caller as an AI assistant acting on the user's behalf (`CallBrief.agentDisclosure`).
-- **Dry-run first, always.** The backend is `CALLE_MODE=fake` by default; real calls need an explicit opt-in and are announced in the startup banner.
-- **No card data, ever.** Speakeasy never stores or transmits card numbers. Payment is a spoken preference only (e.g. "pay on pickup"), and the brief explicitly forbids the agent from reading card details over the call.
-- **Sensitive data** (insurance, DOB) stays in session memory, is never logged in plaintext, and never appears in the public demo video.
+In a **Debug** scheme, set:
 
-## Roadmap
+```text
+SPEAKEASY_DEMO_SCENARIO=success
+SPEAKEASY_DEMO_LANGUAGE=hi
+```
 
-More language pairs (the pipeline is already language-agnostic), saved profiles for repeat facts, persistent callback-camping, and accessibility polish for Deaf and hard-of-hearing users.
+Other scenarios: `gap`, `pending`. To hear native narration, set `SPEAKEASY_DEMO_AUDIO=1`.
+
+The app displays a persistent simulated-call banner and uses a separate details/history store. It does not use the backend, translation API, or CALL-E. These fixtures test and rehearse UI; never present them as real phone-call evidence. Remove the environment variables to return to the backend.
+
+### iOS tests
+
+```bash
+xcodebuild -project ios/Speakeasy.xcodeproj -scheme Speakeasy \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
+  -derivedDataPath ios/build test
+```
+
+The test scheme includes outcome/calendar/slot-retention unit tests and labeled Hindi UI flows. UI tests use no real calls.
+
+## Real calls
+
+Set a valid Gemini key for real business lookup/translation. CALL-E authentication remains on the backend; the integration supports the account-linked `calle auth login` token. See [integration notes](docs/CALLE-INTEGRATION-FEEDBACK.md).
+
+A real self-test explicitly places a phone call:
+
+```bash
+SMOKE_TARGET_NUMBER=+1YOUR_OWN_NUMBER npm run smoke:real
+```
+
+For calls approved in the app, configure `CALLE_MODE=real`, start the backend, review the destination and approve the request. Inspect the startup provider/mode banner. Do not use real mode with mock business lookup results.
+
+## Completion and recovery
+
+- `COMPLETED` means the call ended. Successful UI requires `taskCompleted == true` and no reported gaps.
+- A timeout or lost response after dispatch produces a **pending** outcome. Check status polls the existing run ID; it never plans or starts another call.
+- If dispatch succeeded but no run ID was received, inspect CALL-E call history before making another call.
+- Comparisons with unresolved calls do not offer a booking action. Failed/unconfirmed inquiry results cannot become the recommended winner.
+- Automatic calendar creation requires a confirmed task and an explicit ISO timestamp with a time-zone offset. Relative/free-text dates require the user to select and confirm the date/time.
+
+## Data handling and limits
+
+All briefs identify the caller as an AI and instruct it not to guess missing information. Long card-like digit sequences are rejected before sending a goal/details/preferences to providers; this is a conservative heuristic, not comprehensive financial-data detection. Payment should be a method such as pay on pickup, never card credentials.
+
+Call request logs use an allowlist of operational metadata. They exclude the goal, personal facts, destination numbers, transcripts and confirmation tokens. Supplied details are sent to the calling service as part of the brief; the confirmation screen exposes what is attached.
+
+This remains a prototype:
+
+- Backend sessions are in memory and do not survive a server restart. There is no account authentication or durable job queue.
+- Details/history use local UserDefaults JSON, not an encrypted vault. Use non-sensitive demonstration data.
+- Search results still require human review. Prompt-based restrictions do not guarantee the behavior of an external voice model.
+- Apple speech recognition is native; the implementation does not require recognition to run entirely on-device.
+- Detailed localization, voice availability, real-call outcomes and business types need broader user validation.
+- Deep IVR navigation, very long holds, live user intervention and callback scheduling are deferred.
+
+## Submission and evidence
+
+The repository's earlier milestones record a successful real CALL-E self-test and physical-device use. Those historical notes are separate from the current automated verification. `docs/sample-run.json` is synthetic. The new Hindi UI fixtures are simulated. Neither proves a real appointment booking.
+
+- [Demo recording script](docs/submission/DEMO-SCRIPT.md)
+- [Devpost text draft](docs/submission/DEVPOST-DRAFT.md)
+- [User-test protocol](docs/submission/USER-TEST.md)
+- [Feedback survey draft](docs/submission/FEEDBACK-DRAFT.md)
+- [Name shortlist](docs/submission/NAME-OPTIONS.md)
+- [Current rubric assessment](SELF-JUDGING.md)
+- [Historical milestones](MILESTONES.md)
+
+The team still needs to record and upload the actual submission video, enter the private account/team details, and submit the Devpost form. Preparing these documents does not submit them.

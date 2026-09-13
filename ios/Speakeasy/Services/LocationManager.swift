@@ -29,6 +29,17 @@ final class LocationManager: NSObject, ObservableObject {
             break // denied/restricted → leave placemark nil; backend handles it
         }
     }
+    /// Wait briefly for the first authorized fix instead of sending a stale nil location.
+    func resolvePlace() async -> String? {
+        requestIfNeeded()
+        for _ in 0..<40 {
+            if let placemark { return placemark }
+            if manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted { return nil }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return placemark
+    }
+
 }
 
 extension LocationManager: CLLocationManagerDelegate {

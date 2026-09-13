@@ -58,10 +58,14 @@ enum Theme {
 
     // Brand - Vibrant, friendly primary colors (like Duolingo's green/blue/orange)
     static let primary = Color.cool(0x1CB0F6, 0x1CB0F6)      // Friendly Sky Blue
-    static let primaryDeep = Color.cool(0x1899D6, 0x1899D6)
+    static let primaryDeep = Color.cool(0x0875A9, 0x70CEFA)
     static let accent = Color.cool(0xFF9600, 0xFF9600)       // Playful Orange
     static let success = Color.cool(0x58CC02, 0x58CC02)      // Bouncy Green (listening)
     static let warning = Color.cool(0xFFC800, 0xFFC800)      // Friendly Amber (couldn't hear)
+
+    static let actionInk = Color.cool(0x0875A9, 0x70CEFA)
+    static let accentInk = Color.cool(0x985500, 0xFFBC62)
+    static let buttonFill = Color(hex: 0x0875A9)
 
     // Lines
     static let hairline = Color.cool(0xE2E8F0, 0x4A5568)
@@ -99,7 +103,7 @@ struct PrimaryPill: ButtonStyle {
             .padding(.vertical, 15)
             .padding(.horizontal, 28)
             .frame(minHeight: 52)
-            .background(Capsule().fill(Theme.primary))
+            .background(Capsule().fill(Theme.buttonFill))
             .shadow(color: Theme.primary.opacity(0.35), radius: 14, x: 0, y: 8)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)

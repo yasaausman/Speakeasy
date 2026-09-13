@@ -1,67 +1,34 @@
-# Speakeasy — iOS app
+# Speakeasy iOS
 
-Voice-first SwiftUI client for Speakeasy. The app is the user's side (tap-to-talk,
-confirm gate, live status, result card). All CALL-E logic stays on the Node
-backend — the app only talks to it over HTTP (see `Networking/SpeakeasyAPI.swift`).
+Native SwiftUI client, iOS 17+. The normal app uses `LiveSpeakeasyAPI` over HTTP; CALL-E authentication and phone calls stay on the Node backend.
 
-> **Status:** ✅ builds and runs in the iOS Simulator (verified on iPhone 17 Pro,
-> iOS 26.5). Runs against the built-in **mock** — no backend, no CALL-E, no calls.
-> The full flow works: type a goal → confirm gate (Spanish readback) → mock call →
-> translated result card.
-
-## Files
-
-```
-Speakeasy/
-  SpeakeasyApp.swift              @main entry
-  Models/CallModels.swift         SessionPhase, GoalUnderstanding, CallResult (mirror server/calle/types.ts)
-  Networking/SpeakeasyAPI.swift   protocol + MockSpeakeasyAPI (runs standalone) + LiveSpeakeasyAPI (Node backend)
-  ViewModels/SessionViewModel.swift  the state machine + confirm gate + poll loop
-  Views/ContentView.swift         the single screen (input → confirm → status → result)
-  Views/ResultCardView.swift      outcome, confirmation number, transcript
-  Speech/SpeechManager.swift      STT/TTS stub (Phase M3)
-```
-
-## Build & run
-
-The Xcode project is **generated from `project.yml`** with [XcodeGen] — it is not
-committed (see root `.gitignore`). Regenerate it any time you add/rename a source
-file:
+## Build
 
 ```bash
-cd ios
-xcodegen generate          # writes Speakeasy.xcodeproj
-open Speakeasy.xcodeproj    # then ⌘R on an iPhone simulator
+xcodegen generate --spec ios/project.yml
+open ios/Speakeasy.xcodeproj
 ```
 
-Or build & launch from the command line:
+Run from the repository root. The generated project and build outputs are ignored by Git.
 
-```bash
-cd ios
-xcodegen generate
-xcodebuild -project Speakeasy.xcodeproj -scheme Speakeasy \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -derivedDataPath build build
-xcrun simctl boot "iPhone 17 Pro"; open -a Simulator
-xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/Speakeasy.app
-xcrun simctl launch booted com.speakeasy.app
-```
+Simulator backend default: `http://localhost:3000`. Physical-device testing requires the Mac's LAN address, configured through `SPEAKEASY_BACKEND_URL` in the Xcode scheme or `SpeakeasyBackendURL` in Info.plist. The phone and Mac must share a network.
 
-[XcodeGen]: https://github.com/yonaskolb/XcodeGen  (`brew install xcodegen`)
+## Debug UI rehearsal
 
-## Switching from mock to the real backend (Phase M1)
+Set `SPEAKEASY_DEMO_SCENARIO` to `success`, `gap`, or `pending`, and `SPEAKEASY_DEMO_LANGUAGE=hi`. These launch the labeled simulated API, with fictional details and no backend or real calls. Set `SPEAKEASY_DEMO_AUDIO=1` for native narration. Remove the variables for normal use. The demo is compiled only in Debug.
 
-In `SessionViewModel.init`, pass `LiveSpeakeasyAPI()` instead of the default
-`MockSpeakeasyAPI()`. The simulator reaches the Mac's `localhost:3000` directly,
-so no tunnel is needed while the Node backend runs locally.
+## Core files
 
-## Mobile build phases
+- `Views/RootView.swift`: navigation and API selection.
+- `Views/HomeView.swift`: input, readback/confirmation and English call activity.
+- `ViewModels/SessionViewModel.swift`: session coordination, explicit approval, polling, pending recovery and retained-business follow-ups.
+- `Views/ResultCardView.swift`: verified success, missing information, pending outcomes, and reviewed calendar dates.
+- `Models/CallModels.swift`: wire models and outcome semantics.
+- `Models/Strings.swift`: existing multi-language UI strings.
+- `Models/FlowStrings.swift`: additional Hindi workflow/recovery copy.
+- `Speech/SpeechManager.swift`: Apple recognition and synthesis (not a guarantee of entirely on-device recognition).
+- `Stores/AppStore.swift`: UserDefaults details/history. Prototype storage, not an encrypted vault.
 
-| Phase | Scope | Needs |
-| --- | --- | --- |
-| **M0** | SwiftUI shell runs in simulator on the mock — full state machine, no backend | Xcode |
-| M1 | Swap to LiveSpeakeasyAPI; wire to Node backend (English text) | backend Phase 1 |
-| M2 | Spanish text in/out (backend translation) | backend Phase 2 |
-| M3 | Voice: SFSpeechRecognizer (STT) + AVSpeechSynthesizer (TTS) | mic/speech Info.plist keys |
-| M4 | Multi-call comparison view | backend Phase 4 |
-```
+## Verification
+
+`SpeakeasyTests` covers task completion, ambiguous calendar dates, and preserving the original business on slot selection. `SpeakeasyUITests` covers launch/language persistence and simulated Hindi success, missing information and pending recovery. See `docs/submission/VERIFICATION.md` for results and limitations.

@@ -5,6 +5,9 @@ import SwiftUI
 struct RankedResultsView: View {
     let ranked: [RankedResult]
     let winnerReason: String?
+    var lang: String = "en"
+    var onCheck: (() -> Void)? = nil
+    private var hasPending: Bool { ranked.contains { $0.result.status == .pending } }
     var onReplay: () -> Void
     var onBook: (String) -> Void
     var onDone: () -> Void
@@ -14,16 +17,16 @@ struct RankedResultsView: View {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 if let reason = winnerReason, !reason.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Space.s) {
-                        Label("Best option", systemImage: "trophy.fill")
+                        Label(F.t(hasPending ? "Outcome pending" : "Compare results", lang), systemImage: "trophy.fill")
                             .font(.headline)
-                            .foregroundStyle(Theme.accent)
+                            .foregroundStyle(Theme.accentInk)
                         Text(reason)
                             .font(.title3.weight(.medium))
                             .foregroundStyle(Theme.ink)
                         Button(action: onReplay) {
-                            Label("Play", systemImage: "speaker.wave.2.fill")
+                            Label(L.t(.play, lang), systemImage: "speaker.wave.2.fill")
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(Theme.accent)
+                                .foregroundStyle(Theme.accentInk)
                                 .padding(.vertical, 9).padding(.horizontal, 15)
                                 .background(Capsule().fill(Theme.accent.opacity(0.15)))
                         }
@@ -43,7 +46,7 @@ struct RankedResultsView: View {
                             .frame(width: 34, height: 34)
                             .background(Circle().fill(index == 0 ? Theme.accent : Theme.surfaceSunk))
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.number)
+                            Text(item.business?.name ?? item.number)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(Theme.ink)
                             Text(item.result.outcomeUserLang ?? item.result.outcome)
@@ -57,18 +60,20 @@ struct RankedResultsView: View {
                     .softCard(Theme.surface)
                 }
 
-                if let winner = ranked.first {
+                if !hasPending, let winner = ranked.first, winner.result.isSuccessful {
                     Button { onBook(winner.number) } label: {
-                        Label("Book the best option", systemImage: "phone.arrow.up.right.fill")
+                        Label(F.t("Review and book", lang), systemImage: "phone.arrow.up.right.fill")
                     }
                     .buttonStyle(PrimaryPill())
                     .frame(maxWidth: .infinity)
                     .padding(.top, Theme.Space.xs)
                 }
 
-                Button("New request", action: onDone)
+                if hasPending {
+                    if let onCheck { Button(F.t("Check status", lang), action: onCheck).buttonStyle(PrimaryPill()) }
+                } else { Button(L.t(.newRequest, lang), action: onDone)
                     .buttonStyle(SoftPill())
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity) }
             }
             .padding(.horizontal, Theme.Space.l)
             .padding(.vertical, Theme.Space.m)

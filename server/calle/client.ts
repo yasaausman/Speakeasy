@@ -12,6 +12,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 import { connectCalle, type OAuthConfig } from "./oauth.js";
+import { assertNoCardData, safeCallLogArgs } from "../privacy.js";
 import {
   type CallBrief,
   type CallResult,
@@ -95,7 +96,7 @@ export class McpCalleTransport implements CalleTransport {
 
   private async call(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const client = await this.ensureConnected();
-    this.log("tools/call:req", { tool: name, args: redactArgs(name, args) });
+    this.log("tools/call:req", { tool: name, args: safeCallLogArgs(args) });
     const result = await client.callTool({ name, arguments: args });
     const structured = extractStructured(result);
     this.log("tools/call:res", { tool: name, status: str(structured.status) ?? null });
@@ -143,13 +144,6 @@ export class McpCalleTransport implements CalleTransport {
   }
 }
 
-/** Never log opaque secrets (confirm_token) or full personal facts. */
-function redactArgs(_name: string, args: Record<string, unknown>): Record<string, unknown> {
-  const out = { ...args };
-  if ("confirm_token" in out) out.confirm_token = "<redacted>";
-  return out;
-}
-
 // ── Fake transport (dry-run: no network, no auth, no real call) ──────────────
 // Mirrors examples/shared/fake-mcp-broker-server.mjs behaviour closely enough
 // to exercise the full plan → run → poll → terminal workflow. Results VARY by
@@ -180,7 +174,7 @@ export class FakeCalleTransport implements CalleTransport {
   async planCall(input: PlanCallInput): Promise<PlanCallResult> {
     const planId = `fake-plan-${++this.seq}`;
     this.plans.set(planId, { number: input.to_phones?.[0] ?? "unknown", userInput: input.user_input ?? "" });
-    this.log("fake:plan_call", { goal: input.goal ?? null, to_phones: input.to_phones ?? null });
+    this.log("fake:plan_call", safeCallLogArgs(input as unknown as Record<string, unknown>));
     return { plan_id: planId, confirm_token: "fake-confirm-token", ready_to_run: true, raw: { plan_id: planId, ready_to_run: true } };
   }
 
@@ -359,6 +353,7 @@ export class CalleClient {
    * always first and non-optional (golden rule #6).
    */
   static briefToUserInput(brief: CallBrief): PlanCallInput {
+    assertNoCardData({ objective: brief.objective, facts: brief.facts, constraints: brief.constraints, fallback: brief.fallback });
     const lines: string[] = [];
     lines.push(brief.agentDisclosure.trim());
     lines.push(`Goal: ${brief.objective.trim()}`);
@@ -374,6 +369,7 @@ export class CalleClient {
     lines.push(
       "If they ask for information not listed above, do not guess — say you'll have to check and follow up.",
     );
+    lines.push("Never request, provide, or read payment card numbers, security codes, or bank credentials.");
     lines.push(`Success means: ${brief.successCondition.trim()}`);
     if (brief.fallback.trim()) lines.push(`If that isn't possible: ${brief.fallback.trim()}`);
 
@@ -405,13 +401,30 @@ export class CalleClient {
       );
     }
 
-    const run = await this.runCall({ plan_id: plan.plan_id, confirm_token: plan.confirm_token });
+    let run: RunCallResult;
+    try {
+      run = await this.runCall({ plan_id: plan.plan_id, confirm_token: plan.confirm_token });
+    } catch {
+      // The request may have reached CALL-E. Retrying could place a second call.
+      return this.normalize({ status: "UNKNOWN", raw: {} });
+    }
     this.log("run:started", { run_id: run.run_id ?? null, status: run.status ?? null });
     if (!run.run_id) {
-      throw new Error("run_call returned no run_id; cannot poll. Do NOT retry automatically — escalate.");
+      return this.normalize({ status: "UNKNOWN", raw: {} });
     }
 
-    const terminal = await this.pollRun(run.run_id, onUpdate);
+    return this.resumeRun(run.run_id, onUpdate);
+  }
+
+  /** Read-only: reconnect to an existing call without plan_call or run_call. */
+  async resumeRun(runId: string, onUpdate?: (r: GetCallRunResult) => void): Promise<CallResult> {
+    let terminal: GetCallRunResult;
+    try {
+      terminal = await this.pollRun(runId, onUpdate);
+    } catch {
+      terminal = { run_id: runId, status: "UNKNOWN", raw: {} };
+    }
+    terminal.run_id ??= runId;
     this.log("run:terminal-raw", {
       status: terminal.status ?? null,
       hasTranscript: !!terminal.transcript,
@@ -424,9 +437,7 @@ export class CalleClient {
       status: result.status,
       rawStatus: result.rawStatus,
       taskCompleted: result.taskCompleted ?? null,
-      confirmations: result.confirmationNumbers,
       transcriptChars: result.transcript.length,
-      summary: result.outcome.slice(0, 200),
     });
     return result;
   }
@@ -434,6 +445,15 @@ export class CalleClient {
   /** Turn a terminal get_call_run response into Speakeasy's CallResult. */
   normalize(r: GetCallRunResult): CallResult {
     const rawStatus = (r.status ?? "").toString();
+    if (!isTerminalStatus(rawStatus)) {
+      return {
+        runId: r.run_id, status: "pending", rawStatus,
+        outcome: r.run_id
+          ? "The call outcome is not confirmed yet. Check the existing call's status before trying again."
+          : "The call may have started, but its status could not be recovered. Check CALL-E call history before making another call.",
+        structured: {}, confirmationNumbers: [], transcript: activityToTranscript(r.activity),
+      };
+    }
     const structured = (r.details && typeof r.details === "object" ? r.details : {}) as Record<string, unknown>;
     const outcome = r.summary?.trim() || `Call ended with status ${rawStatus || "UNKNOWN"}.`;
     const confirmationNumbers = collectConfirmationNumbers(structured, outcome);
@@ -455,6 +475,7 @@ export class CalleClient {
           ? (outcomeObj.task_completed as boolean)
           : undefined;
     return {
+      runId: r.run_id,
       status: normalizeStatus(rawStatus),
       rawStatus,
       outcome,

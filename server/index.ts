@@ -75,7 +75,7 @@ app.post("/api/sessions/:id/goal", async (req, reply) => {
     }
     // Anything else (translation/search/classify failure) — log the full error
     // and report it so the app shows something useful instead of a bare 404.
-    req.log.error({ err }, "submitGoal failed");
+    req.log.error("submitGoal failed");
     return reply.code(502).send({ error: message });
   }
 });
@@ -87,6 +87,16 @@ app.post("/api/sessions/:id/confirm", async (req, reply) => {
     return reply.code(202).send({ ok: true });
   } catch (err) {
     return reply.code(409).send({ error: err instanceof Error ? err.message : "cannot confirm" });
+  }
+});
+
+app.post("/api/sessions/:id/check", async (req, reply) => {
+  const { id } = req.params as { id: string };
+  try {
+    orchestrator.resumeMonitoring(id);
+    return reply.code(202).send({ ok: true });
+  } catch (err) {
+    return reply.code(409).send({ error: err instanceof Error ? err.message : "cannot check" });
   }
 });
 

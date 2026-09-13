@@ -12,7 +12,7 @@ import "../server/env.js"; // load .env first, so SMOKE_TARGET_NUMBER / CALLE_MO
 import { createCalleClient } from "../server/calle/client.js";
 import type { CallBrief } from "../server/calle/types.js";
 
-const REAL = process.argv.includes("--real") || process.env.CALLE_MODE === "real";
+const REAL = !process.argv.includes("--fake") && (process.argv.includes("--real") || process.env.CALLE_MODE === "real");
 
 // Hardcoded English brief for Phase 0. Deliberately a HARMLESS self-test so the
 // first real call to your own phone is clean and predictable — no fake booking,

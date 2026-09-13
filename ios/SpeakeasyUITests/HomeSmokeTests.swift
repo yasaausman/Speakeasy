@@ -9,6 +9,8 @@ final class HomeSmokeTests: XCTestCase {
 
     func testHomeShowsGreetingAndStarterChip() {
         let app = XCUIApplication()
+        app.launchEnvironment["SPEAKEASY_DEMO_SCENARIO"] = "success"
+        app.launchEnvironment["SPEAKEASY_DEMO_LANGUAGE"] = "en"
         app.launch()
 
         let greeting = app.staticTexts["What can I help with?"]
@@ -23,6 +25,8 @@ final class HomeSmokeTests: XCTestCase {
     /// Switching language localizes the Home surface and the choice survives relaunch.
     func testLanguageSwitchLocalizesHomeAndPersists() {
         let app = XCUIApplication()
+        app.launchEnvironment["SPEAKEASY_DEMO_SCENARIO"] = "success"
+        app.launchEnvironment["SPEAKEASY_DEMO_LANGUAGE"] = "en"
         app.launch()
 
         XCTAssertTrue(app.staticTexts["What can I help with?"].waitForExistence(timeout: 15))
@@ -41,6 +45,7 @@ final class HomeSmokeTests: XCTestCase {
 
         // …and the choice persists across a relaunch.
         app.terminate()
+        app.launchEnvironment.removeValue(forKey: "SPEAKEASY_DEMO_LANGUAGE")
         app.launch()
         XCTAssertTrue(app.staticTexts["¿En qué puedo ayudarte?"].waitForExistence(timeout: 15),
                       "Language choice should persist across relaunch")

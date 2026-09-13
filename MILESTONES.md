@@ -1,3 +1,5 @@
+> **September 13 reliability pass:** This file preserves earlier milestone history. The current source of truth is README.md and docs/submission/VERIFICATION.md. Earlier claims about 10/10 scores, universally on-device speech, complete localization, logging privacy, and date handling were too broad. The new pass adds inquiry-only comparisons, recoverable pending outcomes, Hindi recovery copy, explicit date review and regression tests. Actual user testing and submission-video publication remain outstanding.
+
 # Speakeasy — Milestones
 
 The running checklist of what's built. **Everything below marked `[x]` is done and
