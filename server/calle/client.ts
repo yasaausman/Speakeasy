@@ -333,6 +333,27 @@ type CallTaskResponse = {
 
 const truncate = (s: string, n = 300): string => (s.length > n ? `${s.slice(0, n)}…` : s);
 
+/** Turn a REST error body into a legible sentence. CALL-E returns
+ *  { error: { code, message, details: { questions: [...] } } } when it rejects a
+ *  create-call (e.g. missing date/name, no balance). Prefer that human message,
+ *  else the clarifying questions, else the truncated raw text — never the raw
+ *  JSON envelope, which is unreadable once translated for the user. */
+function describeCreateError(status: number, body: string): string {
+  let detail = truncate(body);
+  try {
+    const j = JSON.parse(body) as { error?: { message?: unknown; details?: { questions?: unknown } } };
+    const message = typeof j.error?.message === "string" ? j.error.message.trim() : "";
+    const questions = Array.isArray(j.error?.details?.questions)
+      ? (j.error!.details!.questions as unknown[]).filter((q): q is string => typeof q === "string")
+      : [];
+    if (message) detail = message;
+    else if (questions.length) detail = questions.join(" ");
+  } catch {
+    // Not JSON — keep the truncated raw text.
+  }
+  return `CALL-E could not start the call (HTTP ${status}): ${detail}`;
+}
+
 /** Map a REST CallTask onto the transport-agnostic GetCallRunResult that
  *  CalleClient.normalize() already knows how to read. */
 function mapCallTask(task: CallTaskResponse, runId: string): GetCallRunResult {
@@ -403,7 +424,7 @@ export class RestCalleTransport implements CalleTransport {
     }
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      const msg = `CALL-E create-call failed (HTTP ${res.status})${text ? `: ${truncate(text)}` : ""}`;
+      const msg = describeCreateError(res.status, text);
       this.log("rest:run_call:error", { status: res.status });
       // 4xx = the request was rejected outright (bad key, no balance, invalid
       // input): definitely no call placed → surface it. 5xx = ambiguous.

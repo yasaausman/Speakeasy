@@ -105,6 +105,37 @@ test("REST 4xx (e.g. insufficient balance) surfaces as CallNotPlacedError, not a
   );
 });
 
+test("REST 422 clarifying-questions body surfaces CALL-E's message, not the raw JSON envelope", async () => {
+  const { fn } = stubFetch((_url, init) =>
+    init.method === "POST"
+      ? {
+          ok: false,
+          status: 422,
+          body: {
+            error: {
+              code: "call_not_ready",
+              message: "Call task creation rejected: What date should the appointment be for?",
+              details: { questions: ["What date should the appointment be for?", "What name?"] },
+            },
+          },
+        }
+      : { ok: true, status: 200, body: {} },
+  );
+  const transport = new RestCalleTransport("test-key", "https://api.test", () => {}, fn);
+  const client = new CalleClient({ transport, log: () => {}, poll: { firstDelayMs: 1, intervalMs: 1, maxWaitMs: 50 } });
+
+  await assert.rejects(
+    () => client.runBrief(brief),
+    (err: unknown) => {
+      assert.ok(err instanceof CallNotPlacedError);
+      const m = (err as Error).message;
+      assert.match(m, /What date should the appointment be for\?/);
+      assert.doesNotMatch(m, /call_not_ready|"error"|\{/); // no raw JSON envelope leaks through
+      return true;
+    },
+  );
+});
+
 test("REST in-progress CallTask normalizes to a pending outcome (no false completion)", async () => {
   const { fn } = stubFetch((_url, init) =>
     init.method === "POST"
