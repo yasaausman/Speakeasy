@@ -6,7 +6,7 @@ The running checklist of what's built. **Everything below marked `[x]` is done a
 verified**; the open items are at the bottom. Built for the CALL-E "Your Code Is
 Calling" hackathon (Aug 30 – Sep 2026).
 
-Repo: <https://github.com/yasaausman/Speakeasy> · CI: green · License: MIT
+Repo: <https://github.com/yasaausman/KindlyCall> · CI: green · License: MIT
 
 ---
 

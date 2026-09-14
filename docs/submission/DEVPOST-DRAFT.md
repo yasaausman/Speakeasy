@@ -95,7 +95,7 @@ work.
 
 ## Evidence and links
 
-- Repo: `github.com/yasaausman/Speakeasy` at `babfc61`, CI green, MIT.
+- Repo: `github.com/yasaausman/KindlyCall` at `babfc61`, CI green, MIT.
 - Tests: 28 backend (`server/**/*.test.ts`) plus 8 iOS (`ios/KindlyCallTests`,
   `ios/KindlyCallUITests`).
 - Integration feedback: `docs/CALLE-INTEGRATION-FEEDBACK.md`.

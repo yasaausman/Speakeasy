@@ -1,6 +1,6 @@
 # CALL-E integration feedback
 
-Two reproducible integration gaps we hit building [KindlyCall](https://github.com/yasaausman/Speakeasy)
+Two reproducible integration gaps we hit building [KindlyCall](https://github.com/yasaausman/KindlyCall)
 against the `/mcp/openagent_oauth` MCP endpoint. Both cost real debugging time and
 have simple documentation (or example) fixes. This file is written to be filed
 directly as an issue (or PR) on

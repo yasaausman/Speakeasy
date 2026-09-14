@@ -1,12 +1,12 @@
 # KindlyCall
 
-[![CI](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml/badge.svg)](https://github.com/yasaausman/Speakeasy/actions/workflows/ci.yml)
+[![CI](https://github.com/yasaausman/KindlyCall/actions/workflows/ci.yml/badge.svg)](https://github.com/yasaausman/KindlyCall/actions/workflows/ci.yml)
 
-**Book everyday appointments in your language—even when the business only speaks English.**
+**Book everyday appointments in your language, even when the business only speaks English.**
 
 Speak or type a request, review the business and the plan, and approve the call. KindlyCall uses CALL-E to handle the English conversation, then explains the outcome in your language through text and speech.
 
-Built for **CALL-E: Your Code Is Calling**. The headline demo focuses on a Hindi-speaking appointment user. The working name remains KindlyCall while the team considers [name options](docs/submission/NAME-OPTIONS.md).
+Built for **CALL-E: Your Code Is Calling**. The product is multilingual (a dozen selectable languages); the demo video uses Hindi as one example.
 
 ## The experience
 
@@ -112,7 +112,7 @@ The test scheme includes outcome/calendar/slot-retention unit tests and labeled 
 Set a valid Gemini key for real business lookup/translation. CALL-E authentication remains on the backend, with two selectable transports (`CALLE_TRANSPORT`):
 
 - `mcp` (default): OAuth via the account-linked `calle auth login` token. See [integration notes](docs/CALLE-INTEGRATION-FEEDBACK.md).
-- `rest`: the [CALL-E Developer REST API](https://docs.heycall-e.com/api-reference/calls) with an API key — no browser/OAuth. Set `CALLE_TRANSPORT=rest` and `CALLE_API_KEY=<your key>` (from the CALL-E dashboard) in `.env`. The backend then places calls via `POST /v1/calls` and polls `GET /v1/calls/{id}`.
+- `rest`: the [CALL-E Developer REST API](https://docs.heycall-e.com/api-reference/calls) with an API key, no browser or OAuth. Set `CALLE_TRANSPORT=rest` and `CALLE_API_KEY=<your key>` (from the CALL-E dashboard) in `.env`. The backend then places calls via `POST /v1/calls` and polls `GET /v1/calls/{id}`.
 
 Either way, keep `CALLE_MODE=real` off for dry runs. The startup banner shows the active transport, e.g. `calle=real(rest)`.
 
