@@ -13,7 +13,10 @@ import type { PlanCallInput } from "./types.js";
 const brief = { objective: "Book a haircut", targetNumber: "+13125550123", targetRegion: "US", language: "English",
   constraints: [], facts: {}, successCondition: "Booking confirmed", fallback: "Report missing information", agentDisclosure: "I am an AI assistant." };
 function setup(transport: CalleTransport) {
-  const client = new CalleClient({ transport, log: () => {}, poll: { firstDelayMs: 1, intervalMs: 2, maxWaitMs: 12 } });
+  // maxWaitMs is generous vs firstDelayMs so a loaded CI runner can never hit the
+  // monitoring deadline before the first poll (which would flip a completed call to
+  // "pending"); it stays well under settle()'s ~1000ms budget for the timeout tests.
+  const client = new CalleClient({ transport, log: () => {}, poll: { firstDelayMs: 1, intervalMs: 2, maxWaitMs: 500 } });
   const translator = new MockTranslator();
   const orch = new Orchestrator({ calle: client, translator, ranker: new HeuristicRanker(), slotExtractor: new NaiveSlotExtractor(),
     search: new MockBusinessSearch(), classifier: new HeuristicIntentClassifier() });

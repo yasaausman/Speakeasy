@@ -109,10 +109,10 @@ The test scheme includes outcome/calendar/slot-retention unit tests and labeled 
 
 ## Real calls
 
-Set a valid Gemini key for real business lookup/translation. CALL-E authentication remains on the backend, with two selectable transports (`CALLE_TRANSPORT`):
+Set a valid Gemini key for real business lookup and translation. CALL-E authentication stays on the backend. Two transports are selectable with `CALLE_TRANSPORT`:
 
-- `mcp` (default): OAuth via the account-linked `calle auth login` token. See [integration notes](docs/CALLE-INTEGRATION-FEEDBACK.md).
-- `rest`: the [CALL-E Developer REST API](https://docs.heycall-e.com/api-reference/calls) with an API key, no browser or OAuth. Set `CALLE_TRANSPORT=rest` and `CALLE_API_KEY=<your key>` (from the CALL-E dashboard) in `.env`. The backend then places calls via `POST /v1/calls` and polls `GET /v1/calls/{id}`.
+- `rest` (recommended): the [CALL-E Developer REST API](https://docs.heycall-e.com/api-reference/calls) with an API key, no browser or OAuth. Set `CALLE_TRANSPORT=rest` and `CALLE_API_KEY=<your key>` (from the CALL-E dashboard) in `.env`. The backend places calls via `POST /v1/calls` and polls `GET /v1/calls/{id}`.
+- `mcp` (default, local development only): OAuth via the account-linked `calle auth login` token. This reuses the same machine's `calle` CLI token cache, which is a private, per-user credential store, not a supported token-distribution API; the backend reads it locally and never copies, logs, or transmits it. Prefer `rest` for anything beyond local dev. See [integration notes](docs/CALLE-INTEGRATION-FEEDBACK.md).
 
 Either way, keep `CALLE_MODE=real` off for dry runs. The startup banner shows the active transport, e.g. `calle=real(rest)`.
 
